@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:frame_walk/screens/home_page.dart';
+import 'package:frame_walk/widgets/bottom_nav.dart';
 import 'login_page.dart';
 
 class CreateAccountPage extends StatefulWidget {
@@ -41,7 +42,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const HomePage(),
+          builder: (_) => const BottomNav(),
         ),
       );
     }
