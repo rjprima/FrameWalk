@@ -8,8 +8,8 @@ An app designed to help you find inspiration and never run out of things to phot
 
 FrameWalk/
 ├── frame_walk
-├── lib/services
-├── test
+│   ├── backend
+│   └── frontend
 ├── .gitignore
 ├── LICENSE
 ├── README.md

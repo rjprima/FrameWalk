@@ -2,7 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 // Imports the PromptGenerator class we created.
-import '../lib/services/prompt_generator.dart';
+import '../services/prompt_generator.dart';
 
 // Main function where all tests begin.
 void main() {
