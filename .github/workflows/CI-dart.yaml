@@ -1,0 +1,30 @@
+name: validate dart code
+
+on: 
+  push:
+    paths:
+      - 'frame_walk/lib/backend/services/**'
+      - 'frame_walk/lib/backend/test/**'
+      - 'frame_walk/lib/main.dart'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup linter 
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Lint
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
