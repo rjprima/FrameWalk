@@ -3,9 +3,9 @@ name: validate backup-scheduler changes
 on: 
   push:
     paths:
-      - '/frame_walk/lib/backend/services/**'
-      - '/frame_walk/lib/backend/test/**'
-      - '/frame_walk/lib/main.dart'
+      - 'frame_walk/lib/backend/services/**'
+      - 'frame_walk/lib/backend/test/**'
+      - 'frame_walk/lib/main.dart'
 
 jobs:
   validate:
@@ -26,5 +26,5 @@ jobs:
       - name: Lint
         run: flutter analyze
 
-      - name: reun tests
+      - name: Run tests
         run: flutter test
