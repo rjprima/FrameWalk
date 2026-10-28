@@ -1,4 +1,4 @@
-name: validate backup-scheduler changes
+name: validate dart code
 
 on: 
   push:
