@@ -1,42 +1,44 @@
 
 import 'package:flutter/material.dart';
-import 'package:frame_walk/widgets/bottom_nav.dart';
-import 'login_page.dart';
+import 'package:frame_walk/frontend/widgets/bottom_nav.dart';
+import 'create_account_page.dart';
 
-class CreateAccountPage extends StatefulWidget {
-  const CreateAccountPage({super.key});
+// The log in page where users can log in to their account
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<CreateAccountPage> createState() =>
-      _CreateAccountPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _CreateAccountPageState extends State<CreateAccountPage> {
+class _LoginPageState extends State<LoginPage> {
+   // Allows us to access information from both form fields so we can check both are valid
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+
+  // Allows us to store/check the text in the email field
   final _emailController = TextEditingController();
+
+  // Allows us to store/check the text in the password field
   final _passwordController = TextEditingController();
 
+  // Whether the password is visible or not
   bool _obscurePassword = true;
 
   @override
   // Gets called when this State is removed from the tree (when it will never be built again)
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // For now, creating account just goes to home screen
-  void _createAccount() {
+  // For now, pressing log in button takes you to home page
+  void _login() {
     if (_formKey.currentState!.validate()) {
-    //   // TODO: Connect to account creation service later.
+    //   // TODO: Connect to authentication service later.
     //   ScaffoldMessenger.of(context).showSnackBar(
     //     const SnackBar(
-    //       content: Text(
-    //         'Account form works! Account creation is not connected yet.',
-    //       ),
+    //       content: Text('Login UI works! Authentication not connected yet.'),
     //     ),
     //   );
       Navigator.push(
@@ -84,35 +86,16 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
                 // Page heading
                 Text(
-                  'Create Account',
+                  'Log In',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'A new way to see, one walk at a time.',
+                  'Welcome back. Your next walk awaits.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
 
                 const SizedBox(height: 24),
-
-                // Full name
-                const Text('Full name'),
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    hintText: 'Your name',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 16),
 
                 // Email
                 const Text('Email'),
@@ -144,8 +127,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    hintText: 'Create a password',
-                    helperText: 'Use at least 8 characters.',
+                    hintText: 'Enter your password',
                     suffixIcon: IconButton(
                       onPressed: () {
                         setState(() {
@@ -160,42 +142,43 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                     ),
                   ),
                   validator: (value) {
-                    if (value == null || value.length < 8) {
-                      return 'Use at least 8 characters';
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
                     }
                     return null;
                   },
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                // Create account button
+                // Login button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _createAccount,
-                    child: const Text('Create Account'),
+                    onPressed: _login,
+                    child: const Text('Log In'),
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
-                // Switch to login
+                // Switch to account creation
                 Center(
                   child: Wrap(
                     alignment: WrapAlignment.center,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
-                        'Already have an account? ',
+                        'New to FrameWalk? ',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushReplacement(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const LoginPage(),
+                              builder: (_) =>
+                                  const CreateAccountPage(),
                             ),
                           );
                         },
@@ -205,7 +188,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                           tapTargetSize:
                               MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text('Log In'),
+                        child: const Text('Create Account'),
                       ),
                     ],
                   ),

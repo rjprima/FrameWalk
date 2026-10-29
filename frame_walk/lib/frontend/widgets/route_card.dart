@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import '../models/photo_route.dart';
+import '../../models/photo_route.dart';
 
 class RouteCard extends StatelessWidget {
   final PhotoRoute route;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/photo_route.dart';
+import '../../models/photo_route.dart';
 import '../widgets/route_card.dart';
 import '../widgets/route_search_bar.dart';
 import '../widgets/route_filter_chips.dart';

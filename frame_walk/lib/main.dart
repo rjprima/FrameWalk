@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
-import 'screens/landing_page.dart';
-import 'theme/app_theme.dart';
+import 'frontend/screens/landing_page.dart';
+import 'frontend/theme/app_theme.dart';
 
 void main() {
   runApp(const FrameWalkApp());
