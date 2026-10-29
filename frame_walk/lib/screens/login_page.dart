@@ -1,6 +1,5 @@
 
 import 'package:flutter/material.dart';
-import 'package:frame_walk/screens/home_page.dart';
 import 'package:frame_walk/widgets/bottom_nav.dart';
 import 'create_account_page.dart';
 
@@ -26,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
 
   @override
+  // Gets called when this State is removed from the tree (when it will never be built again)
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -149,24 +149,7 @@ class _LoginPageState extends State<LoginPage> {
                   },
                 ),
 
-                // Forgot password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Password reset will be available later.',
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('Forgot password?'),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
 
                 // Login button
                 SizedBox(

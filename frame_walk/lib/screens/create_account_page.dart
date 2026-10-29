@@ -1,6 +1,5 @@
 
 import 'package:flutter/material.dart';
-import 'package:frame_walk/screens/home_page.dart';
 import 'package:frame_walk/widgets/bottom_nav.dart';
 import 'login_page.dart';
 
@@ -21,6 +20,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   bool _obscurePassword = true;
 
   @override
+  // Gets called when this State is removed from the tree (when it will never be built again)
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
