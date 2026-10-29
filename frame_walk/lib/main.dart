@@ -1,16 +1,21 @@
+
 import 'package:flutter/material.dart';
+import 'screens/landing_page.dart';
+import 'theme/app_theme.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(const FrameWalkApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class FrameWalkApp extends StatelessWidget {
+  const FrameWalkApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
+    return MaterialApp(
+      title: 'FrameWalk',
+      theme: AppTheme.lightTheme,
+      home: const LandingPage(),
     );
   }
 }
