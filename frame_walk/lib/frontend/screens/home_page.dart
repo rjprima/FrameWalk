@@ -12,7 +12,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> { 
+class _HomePageState extends State<HomePage> {
   String _query = ''; //current search query
   String _duration = 'Any duration'; //selected duration drop down option
   String _distance = 'Any distance'; //selected distance drop down option
@@ -72,7 +72,7 @@ class _HomePageState extends State<HomePage> {
             (tag) => tag.toLowerCase() == _scenery.toLowerCase(),
           );
 
-      //returned routes need to match all query and drop down selections 
+      //returned routes need to match all query and drop down selections
       return matchesQuery &&
           matchesDuration &&
           matchesDistance &&
@@ -82,13 +82,15 @@ class _HomePageState extends State<HomePage> {
 
   void _toggleBookmark(PhotoRoute route) {
     setState(() {
-      final index = _routes.indexWhere((r) => r.id == route.id); // gets route from _routes with matching id as route arg
+      final index = _routes.indexWhere(
+        (r) => r.id == route.id,
+      ); // gets route from _routes with matching id as route arg
       if (index != -1) {
-        // flips isBookmarked for the found route - maybe we think about 
+        // flips isBookmarked for the found route - maybe we think about
         // changing this to not create a copy of the route and to instead
         // have a function to flip isBookmarked depending on how we store routes
         _routes[index] = _routes[index].copyWith(
-          isBookmarked: !_routes[index].isBookmarked, 
+          isBookmarked: !_routes[index].isBookmarked,
         );
       }
     });
@@ -122,27 +124,29 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: RouteFilterChips(
-              duration: _duration,
-              distance: _distance,
-              scenery: _scenery,
-              onDurationChanged: (value) {
-                setState(() => _duration = value);
-              },
-              onDistanceChanged: (value) {
-                setState(() => _distance = value);
-              },
-              onSceneryChanged: (value) {
-                setState(() => _scenery = value);
-              },
+            padding: const EdgeInsets.all(14),
+            child: Center(
+              child: RouteFilterChips(
+                duration: _duration,
+                distance: _distance,
+                scenery: _scenery,
+                onDurationChanged: (value) {
+                  setState(() => _duration = value);
+                },
+                onDistanceChanged: (value) {
+                  setState(() => _distance = value);
+                },
+                onSceneryChanged: (value) {
+                  setState(() => _scenery = value);
+                },
+              ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Text(
               'Suggested Routes',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
           const SizedBox(height: 8),

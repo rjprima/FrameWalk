@@ -60,7 +60,7 @@ class RouteFilterChips extends StatelessWidget {
                   ? label
                   : selectedValue,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 14,
                 color: selectedValue == label
                     ? Colors.black87
                     : Colors.white,

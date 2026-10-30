@@ -18,26 +18,29 @@ class AppTheme {
       ),
       textTheme: const TextTheme(
         displayLarge: TextStyle( // For landing page title
-          fontSize: 38,
+          fontSize: 48,
           fontWeight: FontWeight.bold,
           color: black,
         ),
         headlineMedium: TextStyle( 
-          fontSize: 28,
+          fontSize: 32,
           fontWeight: FontWeight.bold,
           color: black,
         ),
         titleLarge: TextStyle(
-          fontSize: 20,
+          fontSize: 24,
           fontWeight: FontWeight.bold,
           color: black,
         ),
+        bodySmall: TextStyle(
+          fontSize: 16
+        )
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: teal,
           foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 50),
+          minimumSize: const Size(double.infinity, 55),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(4),
           ),

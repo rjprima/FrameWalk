@@ -22,9 +22,9 @@ class LandingPage extends StatelessWidget {
                   'FrameWalk',
                   style: Theme.of(context).textTheme.displayLarge,
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 60),
                 SizedBox(
-                  width: 180,
+                  width: 230,
                   child: Column(
                     children: [
                       ElevatedButton(
@@ -38,10 +38,10 @@ class LandingPage extends StatelessWidget {
                         },
                         child: const Text(
                           'Log In',
-                          style: TextStyle(fontSize: 17),
+                          style: TextStyle(fontSize: 20),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 35),
                       ElevatedButton(
                         onPressed: () {
                           Navigator.push(
@@ -53,7 +53,7 @@ class LandingPage extends StatelessWidget {
                         },
                         child: const Text(
                           'Create Account',
-                          style: TextStyle(fontSize: 17),
+                          style: TextStyle(fontSize: 20),
                           ),
                       ),
                     ],
