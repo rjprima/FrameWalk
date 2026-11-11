@@ -300,6 +300,113 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    // Test 21: Search routes by name.
+    test('Searches routes by name', () {
+      routeManager.addRoute(
+        WalkingRoute(
+          id: 'uw',
+          name: 'UW Campus Walk',
+          stopIds: ['quad'],
+        ),
+      );
+
+      final results = routeManager.searchRoutes('campus');
+
+      expect(results, hasLength(1));
+      expect(results.first.id, 'uw');
+    });
+
+    // Test 22: Search routes by description.
+    test('Searches routes by description', () {
+      routeManager.addRoute(
+        WalkingRoute(
+          id: 'uw',
+          name: 'Campus Walk',
+          description: 'Photography near the fountain',
+          stopIds: [],
+        ),
+      );
+
+      final results = routeManager.searchRoutes('fountain');
+
+      expect(results, hasLength(1));
+      expect(results.first.id, 'uw');
+    });
+
+    // Test 23: Case-insensitive route searching.
+    test('Search ignores capitalization', () {
+      routeManager.addRoute(
+        WalkingRoute(
+          id: 'uw',
+          name: 'UW Campus Walk',
+          stopIds: [],
+        ),
+      );
+
+      expect(
+        routeManager.searchRoutes('CAMPUS'),
+        hasLength(1),
+      );
+
+      expect(
+        routeManager.searchRoutes('campus'),
+        hasLength(1),
+      );
+    });
+
+    // Test 24: Search with no matching results.
+    test('Unknown search returns empty results', () {
+      routeManager.addRoute(
+        WalkingRoute(
+          id: 'uw',
+          name: 'UW Campus Walk',
+          stopIds: [],
+        ),
+      );
+
+      expect(
+        routeManager.searchRoutes('beach'),
+        isEmpty,
+      );
+    });
+
+    // Test 25: Filter using multiple scenery tags.
+    test('Filters routes by multiple scenery tags', () {
+      routeManager.addRoute(
+        WalkingRoute(
+          id: 'uw',
+          name: 'UW Campus Walk',
+          stopIds: [],
+          sceneryTags: ['Nature', 'Architecture'],
+        ),
+      );
+
+      routeManager.addRoute(
+        WalkingRoute(
+          id: 'park',
+          name: 'Park Walk',
+          stopIds: [],
+          sceneryTags: ['Nature'],
+        ),
+      );
+
+      final results = routeManager.filterBySceneryTags(
+        ['nature', 'architecture'],
+      );
+
+      expect(results, hasLength(1));
+      expect(results.first.id, 'uw');
+    });
+
+    // Test 26: Bookmarking a nonexistent route.
+    test('Cannot bookmark a route that does not exist', () {
+      expect(
+        routeManager.setBookmarked('unknown', true),
+        isFalse,
+      );
+    });
+
   });
 }
 
