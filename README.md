@@ -114,6 +114,47 @@ Quick facts about how this project is configured:
 
 > **Commands:** when macOS and Windows differ, both are shown. Mac commands are for the **Terminal** app; Windows commands are for **PowerShell**. Commands that are the same on both are shown once.
 
+### Docker one-shot APK build
+
+This is the quickest way to build FrameWalk without installing Flutter, Dart, Android Studio, or the Android SDK. You only need Docker Desktop. Docker creates the APK; it does not provide an Android emulator.
+
+Open PowerShell in the repository root and run:
+
+```powershell
+docker build --pull -t framewalk-apk .
+New-Item -ItemType Directory -Force artifacts | Out-Null
+docker run --rm -v "${PWD}\artifacts:/out" framewalk-apk
+```
+
+The APK is now at `artifacts\FrameWalk-debug.apk`. To use it:
+
+1. Copy the APK to an Android phone, tap it, and install it; **or**
+2. Drag it into an Android emulator such as BlueStacks.
+
+The app works without a Maps key, but the Map tab will be blank. To enable maps:
+
+```powershell
+Set-Content -NoNewline .\maps-api-key.txt "AIzaYourOwnKeyGoesHere"
+docker build --secret id=maps_api_key,src=maps-api-key.txt -t framewalk-apk .
+Remove-Item .\maps-api-key.txt
+```
+
+Replace the example key with your Google Maps key. Follow [Google Maps API Setup](#3-google-maps-api-setup) to create and restrict one. Re-run the APK export command after rebuilding. Never commit `maps-api-key.txt`.
+
+#### Run tests in Docker
+
+Use the Flutter builder image to run the full test suite without installing Flutter locally:
+
+```powershell
+docker run --rm `
+  -v "${PWD}\frame_walk:/workspace/frame_walk" `
+  -w /workspace/frame_walk `
+  ghcr.io/gmeligio/flutter-android:3.50.0 `
+  bash -c "flutter pub get && flutter test"
+```
+
+The `framewalk-apk` image only exports the APK, so use the builder image above for tests.
+
 ### 1. Prerequisites
 
 #### 1.1 Install Flutter (includes Dart)
