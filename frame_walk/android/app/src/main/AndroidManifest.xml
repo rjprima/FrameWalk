@@ -1,20 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Read-only access to the user's photos, used by the Activity page to
-         show photos from completed walks (see PhotoManagerPhotoService).
-         Images only: no video, audio, write, or all-files access. -->
-
-    <!-- Android 12L (API 32) and below. -->
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <!-- Android 13 (API 33) and above: photos only. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- Android 14 (API 34) and above: lets the user allow selected photos
-         only, rather than the whole library. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
-    <!-- Android 10 (API 29) and above: keeps GPS in photo metadata so photos
-         can be matched to route stops. Without it the OS strips location. -->
-    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
+    <!-- GPS tracking during an active walk (see WalkTrackingService).
+         Foreground only: location is used while FrameWalk is on screen.
+         ACCESS_BACKGROUND_LOCATION and a location foreground service are
+         intentionally NOT declared. Without them Android throttles location
+         in the background to a few updates per hour, so FrameWalk pauses
+         tracking itself when it leaves the screen. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:label="frame_walk"

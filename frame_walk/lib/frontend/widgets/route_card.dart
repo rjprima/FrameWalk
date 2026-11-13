@@ -2,6 +2,25 @@
 import 'package:flutter/material.dart';
 import '../../backend/services/route_manager.dart';
 
+// Shared by route cards and the bookmark button on the route details page.
+// Bookmarks are updated by the existing callback; feedback is UI-only.
+void toggleRouteBookmarkWithFeedback(
+  BuildContext context, {
+  required bool isBookmarked,
+  required VoidCallback onToggle,
+}) {
+  onToggle();
+  if (isBookmarked) return; // Removing a bookmark needs no save confirmation.
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      const SnackBar(
+        content: Text('Saved to Saved Walks in Activity.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+}
+
 class RouteCard extends StatelessWidget {
   final WalkingRoute route;
   final VoidCallback onTap;
@@ -41,7 +60,11 @@ class RouteCard extends StatelessWidget {
                     tooltip: route.isBookmarked
                         ? 'Remove bookmark'
                         : 'Bookmark route',
-                    onPressed: onBookmarkTap,
+                    onPressed: () => toggleRouteBookmarkWithFeedback(
+                      context,
+                      isBookmarked: route.isBookmarked,
+                      onToggle: onBookmarkTap,
+                    ),
                     icon: Icon(
                       route.isBookmarked
                           ? Icons.bookmark

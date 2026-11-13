@@ -7,6 +7,8 @@ import '../../models/mock_route_data.dart';
 import '../../models/route_stop.dart';
 import '../../backend/providers/route_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/route_card.dart' show toggleRouteBookmarkWithFeedback;
+import 'active_walk_page.dart';
 
 class RouteInfoPage extends StatefulWidget {
   const RouteInfoPage({super.key, required this.route});
@@ -170,11 +172,19 @@ class _RouteInfoPageState extends State<RouteInfoPage> {
                       right: 8,
                       child: Consumer<RouteProvider>(
                         builder: (context, provider, _) {
-                          final isBookmarked =
-                              provider.isBookmarked(widget.route.id);
+                          final isBookmarked = provider.isBookmarked(
+                            widget.route.id,
+                          );
                           return IconButton(
-                            onPressed: () =>
-                                provider.toggleBookmark(widget.route.id),
+                            tooltip: isBookmarked
+                                ? 'Remove bookmark'
+                                : 'Bookmark route',
+                            onPressed: () => toggleRouteBookmarkWithFeedback(
+                              context,
+                              isBookmarked: isBookmarked,
+                              onToggle: () =>
+                                  provider.toggleBookmark(widget.route.id),
+                            ),
                             icon: Icon(
                               isBookmarked
                                   ? Icons.bookmark
@@ -232,9 +242,9 @@ class _RouteInfoPageState extends State<RouteInfoPage> {
                           child: Wrap(
                             spacing: 6,
                             runSpacing: 4,
-                            children: widget.route.sceneryTags
-                                .take(2)
-                                .map((tag) {
+                            children: widget.route.sceneryTags.take(2).map((
+                              tag,
+                            ) {
                               return Chip(
                                 label: Text(tag),
                                 visualDensity: VisualDensity.compact,
@@ -253,7 +263,16 @@ class _RouteInfoPageState extends State<RouteInfoPage> {
                         width: 200,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ActiveWalkPage(
+                                route: widget.route,
+                                stops: _stops,
+                                routePoints: _routePoints,
+                              ),
+                            ),
+                          ),
                           child: const Text('Start Walk'),
                         ),
                       ),

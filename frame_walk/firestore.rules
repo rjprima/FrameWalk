@@ -22,38 +22,114 @@ service cloud.firestore {
         && request.auth.uid == uid
         && request.resource.data.username == resource.data.username;
 
-      // Completed walks. Kept as history, so clients can't delete them.
+      // Walks the user has started (status 'active') or finished
+      // ('completed'). Written by WalkRepository. Cancelled walks are
+      // deleted, which is only allowed while a walk is still active, so
+      // completed walks are kept as history.
       match /walks/{walkId} {
-        allow read: if request.auth != null && request.auth.uid == uid;
+        function isOwner() {
+          return request.auth != null && request.auth.uid == uid;
+        }
 
-        allow create, update: if request.auth != null
-          && request.auth.uid == uid
-          && request.resource.data.userId == uid
-          && request.resource.data.keys().hasOnly([
-            'userId', 'routeId', 'routeTitle', 'startedAt', 'completedAt',
-            'stopIds', 'promptIds', 'stops'
-          ])
-          && request.resource.data.startedAt is timestamp
-          && request.resource.data.completedAt is timestamp;
-
-        // References to photos that stay on the user's device. Only listed
-        // fields are allowed, so no image data or other extra fields can be
-        // stored.
-        match /photoLinks/{linkId} {
-          allow read, delete: if request.auth != null && request.auth.uid == uid;
-
-          allow create, update: if request.auth != null
-            && request.auth.uid == uid
-            && request.resource.data.userId == uid
-            && request.resource.data.walkId == walkId
-            && request.resource.data.keys().hasOnly([
-              'userId', 'walkId', 'routeId', 'assetId', 'platform',
-              'deviceInstallId', 'takenAt', 'width', 'height', 'stopId',
-              'promptId', 'status', 'updatedAt'
+        function hasValidFields(data) {
+          return data.keys().hasOnly([
+              'userId', 'routeId', 'routeTitle', 'status', 'trackingMode',
+              'startedAt', 'completedAt', 'stopIds', 'promptIds',
+              'reachedStopIds', 'stops', 'distanceMeters',
+              'locationPointCount', 'lastLocationAt', 'updatedAt'
             ])
-            && request.resource.data.assetId is string
-            && request.resource.data.assetId.size() <= 256
-            && request.resource.data.status in ['linked', 'removed'];
+            && data.userId == uid
+            && data.routeId is string
+            && data.startedAt is timestamp
+            && data.status in ['active', 'completed'];
+        }
+
+        allow read: if isOwner();
+
+        allow create: if isOwner()
+          && hasValidFields(request.resource.data)
+          && request.resource.data.status == 'active'
+          && !('completedAt' in request.resource.data);
+
+        // Only an active walk can change. The route and start time are fixed.
+        allow update: if isOwner()
+          && resource.data.status == 'active'
+          && hasValidFields(request.resource.data)
+          && request.resource.data.routeId == resource.data.routeId
+          && request.resource.data.startedAt == resource.data.startedAt
+          && (request.resource.data.status == 'active'
+            || (request.resource.data.completedAt is timestamp
+              && request.resource.data.completedAt >= resource.data.startedAt));
+
+        allow delete: if isOwner() && resource.data.status == 'active';
+
+        // GPS history recorded during the walk.
+        match /locationPoints/{pointId} {
+          allow read, delete: if isOwner();
+
+          allow create, update: if isOwner()
+            && request.resource.data.keys().hasOnly([
+              'sequence', 'latitude', 'longitude', 'accuracyMeters',
+              'recordedAt', 'speedMetersPerSecond'
+            ])
+            && request.resource.data.sequence is int
+            && request.resource.data.latitude is number
+            && request.resource.data.latitude >= -90
+            && request.resource.data.latitude <= 90
+            && request.resource.data.longitude is number
+            && request.resource.data.longitude >= -180
+            && request.resource.data.longitude <= 180
+            && request.resource.data.recordedAt is timestamp;
+        }
+
+        // Photos the user added to this walk after finishing it. The image is
+        // in Firebase Storage (see storage.rules); this is its metadata and
+        // which of this walk's prompts (stopId) it answers. Written by
+        // WalkPhotoService.
+        match /photos/{photoId} {
+          function walk() {
+            return get(/databases/$(database)/documents/users/$(uid)/walks/$(walkId)).data;
+          }
+
+          // null means "No prompt". Otherwise it must be one of this walk's
+          // own stops, never one from another walk.
+          function hasValidStop(data) {
+            return data.stopId == null
+              || (data.stopId is string && data.stopId in walk().stopIds);
+          }
+
+          allow read, delete: if isOwner();
+
+          allow create: if isOwner()
+            && walk().status == 'completed'
+            && request.resource.data.keys().hasAll([
+                'photoId', 'userId', 'walkedRouteId', 'storagePath', 'stopId',
+                'uploadedAt', 'contentType', 'sizeBytes'
+              ])
+            && request.resource.data.keys().hasOnly([
+                'photoId', 'userId', 'walkedRouteId', 'storagePath', 'stopId',
+                'uploadedAt', 'updatedAt', 'contentType', 'sizeBytes'
+              ])
+            && request.resource.data.photoId == photoId
+            && request.resource.data.userId == uid
+            && request.resource.data.walkedRouteId == walkId
+            && request.resource.data.storagePath
+              == 'users/' + uid + '/walkedRoutes/' + walkId + '/photos/' + photoId
+            && request.resource.data.uploadedAt is timestamp
+            && request.resource.data.contentType
+              in ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp']
+            && request.resource.data.sizeBytes is int
+            && request.resource.data.sizeBytes > 0
+            && request.resource.data.sizeBytes <= 20 * 1024 * 1024
+            && hasValidStop(request.resource.data);
+
+          // Only the prompt association can change. The file is never
+          // re-pointed.
+          allow update: if isOwner()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['stopId', 'updatedAt'])
+            && request.resource.data.updatedAt is timestamp
+            && hasValidStop(request.resource.data);
         }
       }
     }

@@ -24,7 +24,9 @@ class _MapPageState extends State<MapPage> {
   static const _routeColor = Color(0xFF7966FF);
 
   GoogleMapController? _mapController;
-  BitmapDescriptor? _cameraIcon;
+  BitmapDescriptor? _startIcon;
+  BitmapDescriptor? _endIcon;
+  BitmapDescriptor? _loopIcon;
   String _query = '';
   String _duration = RouteProvider.anyDuration;
   String _distance = RouteProvider.anyDistance;
@@ -46,43 +48,108 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
-    _createCameraIcon();
+    _createEndpointIcons();
   }
 
-  // Draw the camera badges without requiring image assets or a new package.
-  Future<void> _createCameraIcon() async {
+  // Reuse the app colors; render labels once without image assets.
+  Future<void> _createEndpointIcons() async {
+    final start = await _endpointIcon('Start', AppTheme.teal);
+    final end = await _endpointIcon('End', AppTheme.black);
+    final loop = await _endpointIcon('Start / End', AppTheme.teal);
+    if (!mounted) return;
+    setState(() {
+      _startIcon = start;
+      _endIcon = end;
+      _loopIcon = loop;
+    });
+  }
+
+  Future<BitmapDescriptor> _endpointIcon(String label, Color color) async {
+    final text = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 26,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final width = (text.width + 36).ceil();
+    const height = 76;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    canvas.drawCircle(const Offset(36, 36), 33, Paint()..color = Colors.white);
-    canvas.drawCircle(const Offset(36, 36), 29, Paint()..color = _routeColor);
-    final outline = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(18, 25, 36, 25),
-        const Radius.circular(4),
-      ),
-      outline,
+    final body = RRect.fromRectAndRadius(
+      Rect.fromLTWH(2, 2, width - 4.0, 58),
+      const Radius.circular(12),
     );
-    canvas.drawCircle(const Offset(36, 37), 7, outline);
-    canvas.drawLine(const Offset(24, 24), const Offset(30, 20), outline);
-    canvas.drawLine(const Offset(30, 20), const Offset(42, 20), outline);
-    canvas.drawLine(const Offset(42, 20), const Offset(48, 24), outline);
+    canvas.drawRRect(body, Paint()..color = color);
+    canvas.drawRRect(
+      body,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    // The tip marks the actual coordinate, rather than the label's center.
+    canvas.drawPath(
+      Path()
+        ..moveTo(width / 2 - 10, 58)
+        ..lineTo(width / 2, 76)
+        ..lineTo(width / 2 + 10, 58)
+        ..close(),
+      Paint()..color = color,
+    );
+    text.paint(
+      canvas,
+      Offset((width - text.width) / 2, (62 - text.height) / 2),
+    );
+    text.dispose();
     final picture = recorder.endRecording();
-    final image = await picture.toImage(72, 72);
+    final image = await picture.toImage(width, height);
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
     image.dispose();
     picture.dispose();
-    if (!mounted || bytes == null) return;
-    setState(() {
-      _cameraIcon = BitmapDescriptor.bytes(
-        bytes.buffer.asUint8List(),
-        width: 36,
-        height: 36,
-      );
-    });
+    if (bytes == null) return BitmapDescriptor.defaultMarker;
+    return BitmapDescriptor.bytes(
+      bytes.buffer.asUint8List(),
+      width: width / 2,
+      height: height / 2,
+    );
+  }
+
+  Set<Marker> _routeEndpointMarkers(WalkingRoute route) {
+    final points = MockRouteData.getRoutePoints(route.id);
+    if (points.isEmpty) return {};
+    final isLoop = points.first == points.last;
+    // A loop starts and ends at the same coordinate. One combined label
+    // avoids two overlapping markers and preserves the route geometry.
+    return {
+      Marker(
+        markerId: MarkerId('${route.id}-start'),
+        position: points.first,
+        icon:
+            (isLoop ? _loopIcon : _startIcon) ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        infoWindow: InfoWindow(
+          title: '${route.name} — ${isLoop ? 'Start / End' : 'Start'}',
+          snippet: isLoop ? 'This loop returns here.' : 'Begin your walk here.',
+        ),
+        onTap: () => _selectRoute(route),
+      ),
+      if (!isLoop)
+        Marker(
+          markerId: MarkerId('${route.id}-end'),
+          position: points.last,
+          icon: _endIcon ?? BitmapDescriptor.defaultMarker,
+          infoWindow: InfoWindow(
+            title: '${route.name} — End',
+            snippet: 'Your walk ends here.',
+          ),
+          onTap: () => _selectRoute(route),
+        ),
+    };
   }
 
   @override
@@ -150,53 +217,62 @@ class _MapPageState extends State<MapPage> {
       showDragHandle: true,
       builder: (sheetContext) => FractionallySizedBox(
         heightFactor: 0.65,
-        // Consumer keeps bookmark state live inside the sheet.
-        child: Consumer<RouteProvider>(
-          builder: (context, provider, _) {
-            final routes = _visibleRoutes(provider);
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Campus routes (${routes.length})',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
+        // Give the sheet its own snackbar host so confirmations stay visible.
+        child: ScaffoldMessenger(
+          child: Scaffold(
+            backgroundColor: Theme.of(sheetContext).colorScheme.surface,
+            body: Consumer<RouteProvider>(
+              builder: (context, provider, _) {
+                final routes = _visibleRoutes(provider);
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Campus routes (${routes.length})',
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Close routes',
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(sheetContext),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        tooltip: 'Close routes',
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(sheetContext),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: routes.isEmpty
-                      ? const Center(
-                          child:
-                              Text('No routes match your search or filters.'),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: routes.length,
-                          itemBuilder: (context, index) {
-                            final route = routes[index];
-                            return RouteCard(
-                              route: route,
-                              onTap: () => Navigator.pop(sheetContext, route),
-                              onBookmarkTap: () =>
-                                  provider.toggleBookmark(route.id),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            );
-          },
+                    ),
+                    Expanded(
+                      child: routes.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No routes match your search or filters.',
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              itemCount: routes.length,
+                              itemBuilder: (context, index) {
+                                final route = routes[index];
+                                return RouteCard(
+                                  route: route,
+                                  onTap: () =>
+                                      Navigator.pop(sheetContext, route),
+                                  onBookmarkTap: () =>
+                                      provider.toggleBookmark(route.id),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -248,8 +324,7 @@ class _MapPageState extends State<MapPage> {
                         target: MockRouteData.uwCampus,
                         zoom: 15,
                       ),
-                      onMapCreated: (controller) =>
-                          _mapController = controller,
+                      onMapCreated: (controller) => _mapController = controller,
                       onTap: (_) {
                         FocusScope.of(context).unfocus();
                         setState(() => _selectedId = null);
@@ -275,22 +350,17 @@ class _MapPageState extends State<MapPage> {
                       },
                       markers: {
                         for (final route in routes)
-                          Marker(
-                            markerId: MarkerId(route.id),
-                            position: MockRouteData.getRoutePoints(route.id).first,
-                            anchor: const Offset(0.5, 0.5),
-                            icon: _cameraIcon ??
-                                BitmapDescriptor.defaultMarkerWithHue(
-                                  BitmapDescriptor.hueViolet,
-                                ),
-                            onTap: () => _selectRoute(route),
-                          ),
+                          ..._routeEndpointMarkers(route),
                       },
                       circles: {
                         for (final route in routes)
-                          for (var i = 1;
-                              i < MockRouteData.getRoutePoints(route.id).length - 1;
-                              i++)
+                          for (
+                            var i = 1;
+                            i <
+                                MockRouteData.getRoutePoints(route.id).length -
+                                    1;
+                            i++
+                          )
                             Circle(
                               circleId: CircleId('${route.id}-$i'),
                               center: MockRouteData.getRoutePoints(route.id)[i],
