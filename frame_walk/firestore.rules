@@ -81,6 +81,56 @@ service cloud.firestore {
             && request.resource.data.longitude <= 180
             && request.resource.data.recordedAt is timestamp;
         }
+
+        // Photos the user added to this walk after finishing it. The image is
+        // in Firebase Storage (see storage.rules); this is its metadata and
+        // which of this walk's prompts (stopId) it answers. Written by
+        // WalkPhotoService.
+        match /photos/{photoId} {
+          function walk() {
+            return get(/databases/$(database)/documents/users/$(uid)/walks/$(walkId)).data;
+          }
+
+          // null means "No prompt". Otherwise it must be one of this walk's
+          // own stops, never one from another walk.
+          function hasValidStop(data) {
+            return data.stopId == null
+              || (data.stopId is string && data.stopId in walk().stopIds);
+          }
+
+          allow read, delete: if isOwner();
+
+          allow create: if isOwner()
+            && walk().status == 'completed'
+            && request.resource.data.keys().hasAll([
+                'photoId', 'userId', 'walkedRouteId', 'storagePath', 'stopId',
+                'uploadedAt', 'contentType', 'sizeBytes'
+              ])
+            && request.resource.data.keys().hasOnly([
+                'photoId', 'userId', 'walkedRouteId', 'storagePath', 'stopId',
+                'uploadedAt', 'updatedAt', 'contentType', 'sizeBytes'
+              ])
+            && request.resource.data.photoId == photoId
+            && request.resource.data.userId == uid
+            && request.resource.data.walkedRouteId == walkId
+            && request.resource.data.storagePath
+              == 'users/' + uid + '/walkedRoutes/' + walkId + '/photos/' + photoId
+            && request.resource.data.uploadedAt is timestamp
+            && request.resource.data.contentType
+              in ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp']
+            && request.resource.data.sizeBytes is int
+            && request.resource.data.sizeBytes > 0
+            && request.resource.data.sizeBytes <= 20 * 1024 * 1024
+            && hasValidStop(request.resource.data);
+
+          // Only the prompt association can change. The file is never
+          // re-pointed.
+          allow update: if isOwner()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['stopId', 'updatedAt'])
+            && request.resource.data.updatedAt is timestamp
+            && hasValidStop(request.resource.data);
+        }
       }
     }
 

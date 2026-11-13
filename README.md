@@ -501,6 +501,48 @@ Pressing **Start Walk** on a route opens the active-walk screen, which records w
 
 **Testing on an emulator:** open the emulator's **Extended controls (⋯) > Location** and set a point near a stop (for example Red Square, `47.6559, -122.3078`), or play back a route.
 
+## Walk Photos
+
+After a walk is completed, users can add photos to it and tag each one with a prompt from that walk, or with "No prompt". Image files go in Firebase Storage. Their metadata and prompt association go in Firestore.
+
+```
+Firestore: users/{uid}/walks/{walkedRouteId}/photos/{photoId}
+           photoId, userId, walkedRouteId, storagePath, stopId (null = No prompt),
+           uploadedAt, updatedAt, contentType, sizeBytes
+Storage:   users/{uid}/walkedRoutes/{walkedRouteId}/photos/{photoId}
+```
+
+| Piece | File |
+| --- | --- |
+| API for the frontend (`WalkPhotoService`, `PhotoChangeSet`, `PhotoSaveResult`) | `lib/backend/services/walk_photo_service.dart` |
+| Models (`WalkPhoto`, `WalkPrompt`, `PendingPhoto`, `WalkPhotoGallery`) | `lib/models/walk_photo.dart` |
+| Storage access (the only code that uses `firebase_storage`) | `lib/backend/services/photo_storage.dart` |
+| Image type and size checks | `lib/backend/services/image_validation.dart` |
+| Rules | `firestore.rules`, `storage.rules` |
+
+**Associations** come only from the `stopId` the user picks, never from photo time, GPS, EXIF data, or prompt text. Prompts come from the walk's own `WalkedStop`s, so separate walks of the same route never mix.
+
+**Editing flow:** stage edits locally in a `PhotoChangeSet` (`add`, `setStop`, `remove`). Nothing is uploaded until `saveChanges`. That call uploads new files, then writes metadata and association changes in one batch, then processes deletions. If anything fails, `result.remaining` holds exactly what still needs saving.
+
+**Limits:** JPEG, PNG, HEIC/HEIF, and WebP, up to 20 MB, checked by file contents. The backend doesn't recompress photos. To speed up uploads, ask the picker for a smaller image.
+
+**Deploying the rules** (Storage must be enabled in the Firebase console first). On the first deploy, the CLI offers to let Storage rules read Firestore. Accept, because `storage.rules` checks that the walk exists and is completed:
+
+```bash
+cd frame_walk
+firebase deploy --only firestore:rules,storage
+```
+
+**Tests:** `test/backend/services/walk_photo_service_test.dart` uses fakes and runs with `flutter test`. `integration_test/walk_photo_service_emulator_test.dart` runs the real SDKs against the Firebase emulators (needs Java 21+) on a `demo-` project, so it never touches the real one:
+
+```bash
+cd frame_walk
+firebase emulators:exec --project demo-framewalk --only auth,firestore,storage \
+  "flutter test integration_test/walk_photo_service_emulator_test.dart -d <device-id>"
+```
+
+**Test UI (temporary, for the frontend team to replace):** Activity > Previous Walks lists completed walks (`lib/frontend/widgets/completed_walks_list.dart`). Tapping one opens `walk_gallery_page.dart`, which shows photos grouped by prompt plus "No prompt". **Add photos** opens `walk_photo_editor_page.dart`, where you pick, tag, and remove photos, then Save, with progress and retry. These screens only call `WalkPhotoService`, so they can be restyled or rewritten without backend changes. `image_picker` is wrapped in `lib/frontend/utils/photo_picker.dart`, and thumbnails load lazily through `lib/frontend/widgets/walk_photo_thumbnail.dart`.
+
 ## Links
 
 - [Living Document](https://docs.google.com/document/d/1lYug-M3YyP1dTDqYPlPpnL4UAtH1hgJSdiU_M_lnueI/edit?tab=t.0)

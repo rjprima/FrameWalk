@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.jltrinh.frameWalk</string>
+	<string>com.abigailschidler.frameWalk</string>
 	<key>PROJECT_ID</key>
 	<string>framewalk-1a4c7</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:952755882028:ios:3487de7547042a9c87e989</string>
+	<string>1:952755882028:ios:95f125ca95f8564287e989</string>
 </dict>
 </plist>

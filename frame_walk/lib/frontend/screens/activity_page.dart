@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../backend/providers/route_provider.dart';
+import '../widgets/completed_walks_list.dart';
 import '../widgets/route_card.dart';
 import 'route_info_page.dart';
 
@@ -55,8 +56,7 @@ class _ActivityPageState extends State<ActivityPage> {
         const SizedBox(height: 12),
         Expanded(
           child: _selectedTab == 0
-              // No previous walks yet.
-              ? const Center(child: Text('No previous walks yet.'))
+              ? const CompletedWalksList()
               : Consumer<RouteProvider>(
                   builder: (context, provider, _) {
                     final savedRoutes = provider.bookmarkedRoutes;

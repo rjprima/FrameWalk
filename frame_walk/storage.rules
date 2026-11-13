@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Photo files for completed walks. Metadata lives in Firestore at
+// users/{uid}/walks/{walkId}/photos/{photoId} (see firestore.rules). Nothing
+// here is public: only the signed-in owner can read, write, or delete their
+// own photos.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{uid}/walkedRoutes/{walkId}/photos/{photoId} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      allow read, delete: if isOwner();
+
+      // Only images up to 20 MB, and only for one of the user's own completed
+      // walks. The Firestore check needs Storage to be allowed to read
+      // Firestore; the Firebase CLI offers to set that up on the first
+      // deploy.
+      allow create, update: if isOwner()
+        && request.resource.size > 0
+        && request.resource.size <= 20 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|heic|heif|webp)')
+        && firestore.get(/databases/(default)/documents/users/$(uid)/walks/$(walkId)).data.status == 'completed';
+    }
+
+    // Everything else is closed.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

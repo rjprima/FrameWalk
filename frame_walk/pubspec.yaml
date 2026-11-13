@@ -10,10 +10,12 @@ dependencies:
   cloud_firestore: ^7.1.0
   firebase_auth: ^7.0.1
   firebase_core: ^5.1.0
+  firebase_storage: ^14.0.1
   flutter:
     sdk: flutter
   geolocator: ^14.1.2
   google_maps_flutter: ^2.19.0
+  image_picker: ^1.2.4
   provider: ^6.1.2
 
 dev_dependencies:
@@ -23,6 +25,8 @@ dev_dependencies:
   firebase_auth_mocks: ^0.16.0
   fake_cloud_firestore: ^4.5.0
   mock_exceptions: ^0.8.2
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true
