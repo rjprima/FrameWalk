@@ -440,7 +440,7 @@ firebase deploy --only firestore:rules
 
 ```bash
 cd frame_walk
-flutter test lib/backend/test lib/frontend/test
+flutter test test/backend/services/auth_service_test.dart test/frontend/auth_flow_test.dart
 ```
 
 

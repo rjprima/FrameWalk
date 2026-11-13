@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frame_walk/backend/services/walk_photo_matcher.dart';
 import 'package:frame_walk/models/gallery_photo.dart';
 
-import 'fakes/fake_local_photo_service.dart';
+import '../../fakes/fake_local_photo_service.dart';
 
 void main() {
   const matcher = WalkPhotoMatcher();
@@ -38,8 +38,11 @@ void main() {
     test('rejects an out-of-window photo even if taken at a stop', () {
       final match = matcher.match(
         walk,
-        photoAt('a', walkStart.subtract(const Duration(days: 3)),
-            location: redSquare),
+        photoAt(
+          'a',
+          walkStart.subtract(const Duration(days: 3)),
+          location: redSquare,
+        ),
       );
       expect(match.strength, MatchStrength.outsideWindow);
       expect(match.stopId, isNull);
@@ -54,8 +57,10 @@ void main() {
     });
 
     test('a photo taken at a stop is matched to that stop', () {
-      final match =
-          matcher.match(walk, photoAt('a', duringWalk, location: suzzallo));
+      final match = matcher.match(
+        walk,
+        photoAt('a', duringWalk, location: suzzallo),
+      );
       expect(match.strength, MatchStrength.atStop);
       expect(match.stopId, 'red_stop_2');
       expect(match.distanceMeters, lessThan(1));
@@ -64,8 +69,10 @@ void main() {
     test('picks the nearest stop when a photo is a few meters off', () {
       // About 20 m north of Red Square.
       const nearby = GeoCoordinate(47.65608, -122.3078);
-      final match =
-          matcher.match(walk, photoAt('a', duringWalk, location: nearby));
+      final match = matcher.match(
+        walk,
+        photoAt('a', duringWalk, location: nearby),
+      );
       expect(match.stopId, 'red_stop_1');
     });
 
@@ -73,8 +80,10 @@ void main() {
       // Halfway from Suzzallo to Drumheller Fountain, over 100 m from every
       // stop.
       const between = GeoCoordinate(47.6549, -122.30845);
-      final match =
-          matcher.match(walk, photoAt('a', duringWalk, location: between));
+      final match = matcher.match(
+        walk,
+        photoAt('a', duringWalk, location: between),
+      );
       expect(match.strength, MatchStrength.nearRoute);
       expect(match.isLikelyFromWalk, isTrue);
     });
@@ -82,8 +91,10 @@ void main() {
     test('a photo far from the route is not suggested', () {
       // Downtown Seattle, about 6 km away.
       const downtown = GeoCoordinate(47.6062, -122.3321);
-      final match =
-          matcher.match(walk, photoAt('a', duringWalk, location: downtown));
+      final match = matcher.match(
+        walk,
+        photoAt('a', duringWalk, location: downtown),
+      );
       expect(match.strength, MatchStrength.farFromRoute);
       expect(match.isLikelyFromWalk, isFalse);
     });

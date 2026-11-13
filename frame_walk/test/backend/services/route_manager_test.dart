@@ -1,6 +1,5 @@
-
 import 'package:flutter_test/flutter_test.dart';
-import '../services/route_manager.dart';
+import 'package:frame_walk/backend/services/route_manager.dart';
 
 void main() {
   late RouteManager routeManager;
@@ -11,7 +10,6 @@ void main() {
   });
 
   group('RouteManager Tests', () {
-
     // Test 1: Add a route successfully.
     test('Adds a walking route', () {
       final route = WalkingRoute(
@@ -28,11 +26,7 @@ void main() {
     // Test 2: Retrieve an existing route.
     test('Retrieves a route by ID', () {
       routeManager.addRoute(
-        WalkingRoute(
-          id: 'route1',
-          name: 'Red Square Walk',
-          stopIds: ['stop1'],
-        ),
+        WalkingRoute(id: 'route1', name: 'Red Square Walk', stopIds: ['stop1']),
       );
 
       final result = routeManager.getRoute('route1');
@@ -44,19 +38,11 @@ void main() {
     // Test 3: Retrieve all routes.
     test('Returns all available routes', () {
       routeManager.addRoute(
-        WalkingRoute(
-          id: 'route1',
-          name: 'UW Campus Walk',
-          stopIds: ['stop1'],
-        ),
+        WalkingRoute(id: 'route1', name: 'UW Campus Walk', stopIds: ['stop1']),
       );
 
       routeManager.addRoute(
-        WalkingRoute(
-          id: 'route2',
-          name: 'Fountain Walk',
-          stopIds: ['stop2'],
-        ),
+        WalkingRoute(id: 'route2', name: 'Fountain Walk', stopIds: ['stop2']),
       );
 
       expect(routeManager.getAllRoutes().length, equals(2));
@@ -80,11 +66,7 @@ void main() {
     // Test 5: Remove a route.
     test('Removes an existing route', () {
       routeManager.addRoute(
-        WalkingRoute(
-          id: 'route1',
-          name: 'UW Campus Walk',
-          stopIds: ['stop1'],
-        ),
+        WalkingRoute(id: 'route1', name: 'UW Campus Walk', stopIds: ['stop1']),
       );
 
       final removed = routeManager.removeRoute('route1');
@@ -103,21 +85,14 @@ void main() {
 
       routeManager.addRoute(route);
 
-      expect(
-        () => routeManager.addRoute(route),
-        throwsArgumentError,
-      );
+      expect(() => routeManager.addRoute(route), throwsArgumentError);
     });
 
     // Test 7: Reject empty route IDs.
     test('Rejects empty route IDs', () {
       expect(
         () => routeManager.addRoute(
-          WalkingRoute(
-            id: '',
-            name: 'Invalid Route',
-            stopIds: [],
-          ),
+          WalkingRoute(id: '', name: 'Invalid Route', stopIds: []),
         ),
         throwsArgumentError,
       );
@@ -127,11 +102,7 @@ void main() {
     test('Rejects empty route names', () {
       expect(
         () => routeManager.addRoute(
-          WalkingRoute(
-            id: 'route1',
-            name: '',
-            stopIds: [],
-          ),
+          WalkingRoute(id: 'route1', name: '', stopIds: []),
         ),
         throwsArgumentError,
       );
@@ -149,18 +120,12 @@ void main() {
 
     // Test 11: Reject empty IDs when retrieving.
     test('Rejects empty IDs during retrieval', () {
-      expect(
-        () => routeManager.getRoute(''),
-        throwsArgumentError,
-      );
+      expect(() => routeManager.getRoute(''), throwsArgumentError);
     });
 
     // Test 12: Reject empty IDs when removing.
     test('Rejects empty IDs during removal', () {
-      expect(
-        () => routeManager.removeRoute(''),
-        throwsArgumentError,
-      );
+      expect(() => routeManager.removeRoute(''), throwsArgumentError);
     });
 
     // Test 13: Removing an unknown route returns false.
@@ -171,17 +136,10 @@ void main() {
     // Test 14: Prevent changes to returned route lists.
     test('Prevents modifying the route list', () {
       routeManager.addRoute(
-        WalkingRoute(
-          id: 'route1',
-          name: 'UW Campus Walk',
-          stopIds: ['stop1'],
-        ),
+        WalkingRoute(id: 'route1', name: 'UW Campus Walk', stopIds: ['stop1']),
       );
 
-      expect(
-        () => routeManager.getAllRoutes().clear(),
-        throwsUnsupportedError,
-      );
+      expect(() => routeManager.getAllRoutes().clear(), throwsUnsupportedError);
     });
 
     // Test 15: Prevent changes to photography stops.
@@ -192,10 +150,7 @@ void main() {
         stopIds: ['stop1'],
       );
 
-      expect(
-        () => route.stopIds.add('stop2'),
-        throwsUnsupportedError,
-      );
+      expect(() => route.stopIds.add('stop2'), throwsUnsupportedError);
     });
 
     // Test 16: Store duration, distance, and scenery tags.
@@ -215,30 +170,18 @@ void main() {
       expect(routeManager.getRoute('uw')!.estimatedMinutes, 30);
       expect(routeManager.getRoute('uw')!.distanceMiles, 1.2);
 
-      expect(
-        routeManager.filterBySceneryTags(['nature']),
-        [route],
-      );
+      expect(routeManager.filterBySceneryTags(['nature']), [route]);
 
-      expect(
-        routeManager.filterBySceneryTags(['urban']),
-        isEmpty,
-      );
+      expect(routeManager.filterBySceneryTags(['urban']), isEmpty);
     });
 
     // Test 17: Update an existing route.
     test('Updates route information', () {
       routeManager.addRoute(
-        WalkingRoute(
-          id: 'uw',
-          name: 'Old Name',
-          stopIds: [],
-        ),
+        WalkingRoute(id: 'uw', name: 'Old Name', stopIds: []),
       );
 
-      final updated = routeManager
-          .getRoute('uw')!
-          .copyWith(name: 'New Name');
+      final updated = routeManager.getRoute('uw')!.copyWith(name: 'New Name');
 
       expect(routeManager.updateRoute(updated), isTrue);
       expect(routeManager.getRoute('uw')!.name, 'New Name');
@@ -247,11 +190,7 @@ void main() {
     // Test 18: Bookmark and unbookmark a route.
     test('Bookmarks and unbookmarks a route', () {
       routeManager.addRoute(
-        WalkingRoute(
-          id: 'uw',
-          name: 'UW Walk',
-          stopIds: [],
-        ),
+        WalkingRoute(id: 'uw', name: 'UW Walk', stopIds: []),
       );
 
       expect(routeManager.setBookmarked('uw', true), isTrue);
@@ -302,4 +241,3 @@ void main() {
     });
   });
 }
-

@@ -5,7 +5,9 @@ import 'package:frame_walk/backend/providers/route_provider.dart';
 import 'package:frame_walk/backend/services/local_photo_service.dart';
 import 'package:frame_walk/backend/services/walk_gallery_service.dart';
 import 'package:frame_walk/backend/services/walk_history_service.dart';
-import 'package:frame_walk/backend/test/fakes/fake_local_photo_service.dart';
+
+import '../fakes/fake_local_photo_service.dart';
+
 import 'package:frame_walk/frontend/screens/activity_page.dart';
 import 'package:frame_walk/frontend/screens/walk_photos_page.dart';
 import 'package:frame_walk/frontend/widgets/local_photo_thumbnail.dart';
@@ -69,8 +71,9 @@ void main() {
   }
 
   group('Activity page', () {
-    testWidgets('lists completed routes and opens a walk\'s photos',
-        (tester) async {
+    testWidgets('lists completed routes and opens a walk\'s photos', (
+      tester,
+    ) async {
       await saveWalk();
       photos.gallery.addAll([
         photoAt('at-red-square', minutesIn(3), location: redSquare),
@@ -93,13 +96,17 @@ void main() {
       expect(find.byType(LocalPhotoThumbnail), findsNWidgets(2));
     });
 
-    testWidgets('shows a message when there are no previous walks',
-        (tester) async {
+    testWidgets('shows a message when there are no previous walks', (
+      tester,
+    ) async {
       await openActivity(tester);
 
       expect(find.textContaining('No previous walks yet'), findsOneWidget);
-      expect(photos.checkAccessCalls, 0,
-          reason: 'the walk list never touches the gallery');
+      expect(
+        photos.checkAccessCalls,
+        0,
+        reason: 'the walk list never touches the gallery',
+      );
     });
 
     testWidgets('saved walks tab still works', (tester) async {
@@ -117,8 +124,9 @@ void main() {
   });
 
   group('Walk photos permissions', () {
-    testWidgets('explains photo access and asks only when the user taps',
-        (tester) async {
+    testWidgets('explains photo access and asks only when the user taps', (
+      tester,
+    ) async {
       photos
         ..access = GalleryAccess.denied
         ..accessAfterRequest = GalleryAccess.full
@@ -127,8 +135,10 @@ void main() {
 
       await openWalkPhotos(tester, walk);
       expect(find.byType(PhotoAccessCard), findsOneWidget);
-      expect(find.textContaining('Your photos stay on this phone'),
-          findsOneWidget);
+      expect(
+        find.textContaining('Your photos stay on this phone'),
+        findsOneWidget,
+      );
       expect(photos.requestAccessCalls, 0);
 
       await tester.tap(find.text('Allow photo access'));
@@ -155,8 +165,7 @@ void main() {
       expect(photos.openSettingsCalls, 1);
     });
 
-    testWidgets('refreshes when access is granted in Settings',
-        (tester) async {
+    testWidgets('refreshes when access is granted in Settings', (tester) async {
       photos
         ..access = GalleryAccess.denied
         ..gallery.add(photoAt('a', minutesIn(3), location: redSquare));
@@ -171,8 +180,9 @@ void main() {
       expect(find.byType(LocalPhotoThumbnail), findsOneWidget);
     });
 
-    testWidgets('limited access shows a banner to change the selection',
-        (tester) async {
+    testWidgets('limited access shows a banner to change the selection', (
+      tester,
+    ) async {
       photos.access = GalleryAccess.limited;
       final walk = await saveWalk();
 
@@ -192,8 +202,10 @@ void main() {
       await openWalkPhotos(tester, walk);
 
       expect(find.text('No photos associated with this walk'), findsOneWidget);
-      expect(find.textContaining("match this walk's time window"),
-          findsOneWidget);
+      expect(
+        find.textContaining("match this walk's time window"),
+        findsOneWidget,
+      );
       expect(find.text('Add photos from camera roll'), findsOneWidget);
     });
 
@@ -201,12 +213,16 @@ void main() {
       final photo = photoAt('a', minutesIn(3));
       photos.gallery.add(photo);
       final walk = await saveWalk();
-      await galleryService.assignPhotos(walk, [photo], promptId: 'red_stop_1#0');
+      await galleryService.assignPhotos(walk, [
+        photo,
+      ], promptId: 'red_stop_1#0');
       photos.deletePhotoOutsideApp('a');
 
       await openWalkPhotos(tester, walk);
-      expect(find.textContaining('no longer exist on this device'),
-          findsOneWidget);
+      expect(
+        find.textContaining('no longer exist on this device'),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('Remove from walk'));
       await tester.pumpAndSettle();
@@ -232,12 +248,15 @@ void main() {
       expect(links.single.promptId, 'red_stop_2#0');
     });
 
-    testWidgets('removes a photo without deleting it from the camera roll',
-        (tester) async {
+    testWidgets('removes a photo without deleting it from the camera roll', (
+      tester,
+    ) async {
       final photo = photoAt('a', minutesIn(3), location: redSquare);
       photos.gallery.add(photo);
       final walk = await saveWalk();
-      await galleryService.assignPhotos(walk, [photo], promptId: 'red_stop_1#0');
+      await galleryService.assignPhotos(walk, [
+        photo,
+      ], promptId: 'red_stop_1#0');
 
       await openWalkPhotos(tester, walk);
       await tester.tap(find.byType(LocalPhotoThumbnail));
@@ -250,8 +269,9 @@ void main() {
       expect(photos.gallery, contains(photo));
     });
 
-    testWidgets('adds several photos from the camera roll to one prompt',
-        (tester) async {
+    testWidgets('adds several photos from the camera roll to one prompt', (
+      tester,
+    ) async {
       photos.gallery.addAll([
         photoAt('old-1', DateTime(2025, 5, 1)),
         photoAt('old-2', DateTime(2025, 5, 2)),
@@ -278,8 +298,9 @@ void main() {
       expect(links.map((l) => l.promptId), everyElement('red_stop_3#0'));
     });
 
-    testWidgets('shows an icon when a thumbnail cannot be read',
-        (tester) async {
+    testWidgets('shows an icon when a thumbnail cannot be read', (
+      tester,
+    ) async {
       photos.gallery.add(photoAt('heic', minutesIn(3), location: redSquare));
       photos.unreadableThumbnails.add('heic');
       final walk = await saveWalk();

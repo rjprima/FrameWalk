@@ -3,9 +3,12 @@ name: validate dart code
 on: 
   push:
     paths:
-      - 'frame_walk/lib/backend/services/**'
-      - 'frame_walk/lib/backend/test/**'
-      - 'frame_walk/lib/main.dart'
+      - 'frame_walk/lib/**'
+      - 'frame_walk/test/**'
+      - 'frame_walk/pubspec.yaml'
+      - 'frame_walk/pubspec.lock'
+      - 'frame_walk/analysis_options.yaml'
+      - '.github/workflows/CI-dart.yaml'
   workflow_dispatch:
 
 jobs:

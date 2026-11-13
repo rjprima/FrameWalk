@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../services/route_manager.dart';
-import '../../models/mock_route_data.dart';
-import '../providers/route_provider.dart';
+import 'package:frame_walk/backend/services/route_manager.dart';
+import 'package:frame_walk/models/mock_route_data.dart';
+import 'package:frame_walk/backend/providers/route_provider.dart';
 
 WalkingRoute makeRoute(
   String id, {
@@ -31,11 +31,9 @@ RouteProvider makeProvider(List<WalkingRoute> routes) {
   return provider;
 }
 
-List<String> ids(List<WalkingRoute> routes) =>
-    routes.map((r) => r.id).toList();
+List<String> ids(List<WalkingRoute> routes) => routes.map((r) => r.id).toList();
 
 void main() {
-
   // This group tests that RouteProviders are constructed as expected
   group('construction', () {
     test('starts empty when seedMockData is false', () {
@@ -83,14 +81,15 @@ void main() {
 
     test('stopIds match the stops returned by getStops', () {
       for (final route in provider.routes) {
-        final stopIds =
-            MockRouteData.getStops(route.id).map((s) => s.id).toList();
+        final stopIds = MockRouteData.getStops(route.id)
+            .map((s) => s.id)
+            .toList();
         expect(route.stopIds, stopIds, reason: route.id);
       }
     });
   });
 
-// Tests if provider looks up routes correctly
+  // Tests if provider looks up routes correctly
   group('lookup', () {
     late RouteProvider provider;
 
@@ -152,12 +151,14 @@ void main() {
       expect(notifications, 2);
     });
 
-    test('toggleBookmark on an unknown id does nothing and does not notify',
-        () {
-      provider.toggleBookmark('nope');
-      expect(notifications, 0);
-      expect(provider.bookmarkedRoutes, isEmpty);
-    });
+    test(
+      'toggleBookmark on an unknown id does nothing and does not notify',
+      () {
+        provider.toggleBookmark('nope');
+        expect(notifications, 0);
+        expect(provider.bookmarkedRoutes, isEmpty);
+      },
+    );
 
     test('bookmarkedRoutes contains only bookmarked routes', () {
       provider.toggleBookmark('b');
@@ -170,7 +171,6 @@ void main() {
       expect(provider.isBookmarked('b'), isFalse);
     });
   });
-
 
   // idk if we need to test or have add, remove or update b/c idk what situation would they
   // be used, so these are commented out for now
@@ -227,23 +227,34 @@ void main() {
 
     setUp(() {
       provider = makeProvider([
-        makeRoute('a',
-            name: 'Red Square Walk',
-            minutes: 10,
-            miles: 0.5,
-            tags: ['Architecture', 'Urban']),
-        makeRoute('b',
-            name: 'UW Nature Walk',
-            minutes: 20,
-            miles: 1.2,
-            tags: ['Nature', 'Urban']),
-        makeRoute('c',
-            name: 'Waterfront Views',
-            minutes: 30,
-            miles: 1.8,
-            tags: ['Water', 'Nature']),
-        makeRoute('d',
-            name: 'Long Hike', minutes: 45, miles: 2.5, tags: ['Nature']),
+        makeRoute(
+          'a',
+          name: 'Red Square Walk',
+          minutes: 10,
+          miles: 0.5,
+          tags: ['Architecture', 'Urban'],
+        ),
+        makeRoute(
+          'b',
+          name: 'UW Nature Walk',
+          minutes: 20,
+          miles: 1.2,
+          tags: ['Nature', 'Urban'],
+        ),
+        makeRoute(
+          'c',
+          name: 'Waterfront Views',
+          minutes: 30,
+          miles: 1.8,
+          tags: ['Water', 'Nature'],
+        ),
+        makeRoute(
+          'd',
+          name: 'Long Hike',
+          minutes: 45,
+          miles: 2.5,
+          tags: ['Nature'],
+        ),
       ]);
     });
 
@@ -284,10 +295,12 @@ void main() {
       });
 
       test('Any duration returns everything', () {
-        expect(
-          ids(provider.search(duration: RouteProvider.anyDuration)),
-          ['a', 'b', 'c', 'd'],
-        );
+        expect(ids(provider.search(duration: RouteProvider.anyDuration)), [
+          'a',
+          'b',
+          'c',
+          'd',
+        ]);
       });
 
       test('an unrecognized value does not filter', () {
@@ -310,10 +323,12 @@ void main() {
       });
 
       test('Any distance returns everything', () {
-        expect(
-          ids(provider.search(distance: RouteProvider.anyDistance)),
-          ['a', 'b', 'c', 'd'],
-        );
+        expect(ids(provider.search(distance: RouteProvider.anyDistance)), [
+          'a',
+          'b',
+          'c',
+          'd',
+        ]);
       });
 
       test('an unrecognized value does not filter', () {
@@ -332,10 +347,12 @@ void main() {
       });
 
       test('Any scenery returns everything', () {
-        expect(
-          ids(provider.search(scenery: RouteProvider.anyScenery)),
-          ['a', 'b', 'c', 'd'],
-        );
+        expect(ids(provider.search(scenery: RouteProvider.anyScenery)), [
+          'a',
+          'b',
+          'c',
+          'd',
+        ]);
       });
 
       test('returns nothing for a tag no route has', () {
@@ -347,12 +364,14 @@ void main() {
     group('combined filters', () {
       test('all filters must match', () {
         expect(
-          ids(provider.search(
-            query: 'water',
-            duration: '15-30 min',
-            distance: '1-2 mi',
-            scenery: 'Nature',
-          )),
+          ids(
+            provider.search(
+              query: 'water',
+              duration: '15-30 min',
+              distance: '1-2 mi',
+              scenery: 'Nature',
+            ),
+          ),
           ['c'],
         );
       });
@@ -372,7 +391,7 @@ void main() {
     });
   });
 
-  // tests edge cases of filters 
+  // tests edge cases of filters
   group('search boundaries', () {
     late RouteProvider provider;
 

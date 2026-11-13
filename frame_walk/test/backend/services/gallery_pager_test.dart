@@ -6,15 +6,15 @@ import 'package:frame_walk/backend/services/local_photo_service.dart';
 import 'package:frame_walk/backend/services/photo_manager_photo_service.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import 'fakes/fake_local_photo_service.dart';
+import '../../fakes/fake_local_photo_service.dart';
 
 void main() {
   FakeLocalPhotoService galleryWith(int count) => FakeLocalPhotoService(
-        gallery: List.generate(
-          count,
-          (i) => photoAt('p$i', DateTime(2026, 1, 1).add(Duration(minutes: i))),
-        ),
-      );
+    gallery: List.generate(
+      count,
+      (i) => photoAt('p$i', DateTime(2026, 1, 1).add(Duration(minutes: i))),
+    ),
+  );
 
   GalleryPager pagerFor(FakeLocalPhotoService photos, {int pageSize = 10}) =>
       GalleryPager(
@@ -92,20 +92,24 @@ void main() {
       final pager = GalleryPager((page, size) {
         calls++;
         if (calls == 1) return slowPage.future;
-        return Future.value(GalleryPage(
-          photos: [photoAt('fresh', DateTime(2026))],
-          page: page,
-          hasMore: false,
-        ));
+        return Future.value(
+          GalleryPage(
+            photos: [photoAt('fresh', DateTime(2026))],
+            page: page,
+            hasMore: false,
+          ),
+        );
       });
 
       final stale = pager.loadNextPage();
       await pager.refresh();
-      slowPage.complete(GalleryPage(
-        photos: [photoAt('stale', DateTime(2025))],
-        page: 0,
-        hasMore: true,
-      ));
+      slowPage.complete(
+        GalleryPage(
+          photos: [photoAt('stale', DateTime(2025))],
+          page: 0,
+          hasMore: true,
+        ),
+      );
       await stale;
 
       expect(pager.photos.map((p) => p.assetId), ['fresh']);

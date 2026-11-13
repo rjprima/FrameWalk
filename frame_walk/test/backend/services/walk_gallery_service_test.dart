@@ -5,7 +5,7 @@ import 'package:frame_walk/backend/services/walk_gallery_service.dart';
 import 'package:frame_walk/backend/services/walk_history_service.dart';
 import 'package:frame_walk/models/walk_photo_link.dart';
 
-import 'fakes/fake_local_photo_service.dart';
+import '../../fakes/fake_local_photo_service.dart';
 
 void main() {
   late FakeFirebaseFirestore firestore;
@@ -68,15 +68,20 @@ void main() {
         photoAt('at-suzzallo-1', minutesIn(12), location: suzzallo),
         photoAt('at-suzzallo-2', minutesIn(13), location: suzzallo),
         photoAt('no-gps', minutesIn(20)),
-        photoAt('yesterday', walkStart.subtract(const Duration(days: 1)),
-            location: redSquare),
+        photoAt(
+          'yesterday',
+          walkStart.subtract(const Duration(days: 1)),
+          location: redSquare,
+        ),
       ]);
 
       final gallery = await service.loadGallery(walk);
 
       expect(idsIn(sectionFor(gallery, 'red_stop_1').items), ['at-red-square']);
-      expect(idsIn(sectionFor(gallery, 'red_stop_2').items),
-          ['at-suzzallo-1', 'at-suzzallo-2']);
+      expect(idsIn(sectionFor(gallery, 'red_stop_2').items), [
+        'at-suzzallo-1',
+        'at-suzzallo-2',
+      ]);
       expect(idsIn(gallery.suggestions), ['no-gps']);
       expect(gallery.timeWindowPhotoCount, 4);
       expect(
@@ -129,7 +134,10 @@ void main() {
     });
 
     test('adds photos taken outside the walk when chosen by hand', () async {
-      final older = photoAt('older', walkStart.subtract(const Duration(days: 5)));
+      final older = photoAt(
+        'older',
+        walkStart.subtract(const Duration(days: 5)),
+      );
       photos.gallery.add(older);
 
       await service.assignPhotos(walk, [older], promptId: 'red_stop_4#0');
@@ -146,8 +154,11 @@ void main() {
       final gallery = await service.loadGallery(walk);
 
       expect(idsIn(gallery.unassigned), ['a']);
-      expect(sectionFor(gallery, 'red_stop_1').items, isEmpty,
-          reason: "the user's choice overrides GPS matching");
+      expect(
+        sectionFor(gallery, 'red_stop_1').items,
+        isEmpty,
+        reason: "the user's choice overrides GPS matching",
+      );
     });
 
     test('moves a photo from one prompt to another', () async {
@@ -174,20 +185,22 @@ void main() {
   });
 
   group('Removing photos', () {
-    test('removes a photo from the walk but not from the camera roll',
-        () async {
-      final photo = photoAt('a', minutesIn(5), location: redSquare);
-      photos.gallery.add(photo);
-      await service.assignPhotos(walk, [photo], promptId: 'red_stop_1#0');
+    test(
+      'removes a photo from the walk but not from the camera roll',
+      () async {
+        final photo = photoAt('a', minutesIn(5), location: redSquare);
+        photos.gallery.add(photo);
+        await service.assignPhotos(walk, [photo], promptId: 'red_stop_1#0');
 
-      await service.removePhoto(walk, photo);
-      final gallery = await service.loadGallery(walk);
+        await service.removePhoto(walk, photo);
+        final gallery = await service.loadGallery(walk);
 
-      expect(gallery.hasVisiblePhotos, isFalse);
-      expect(photos.gallery.map((p) => p.assetId), contains('a'));
-      final links = await history.fetchPhotoLinks('user-1', 'walk-1');
-      expect(links.single.status, PhotoLinkStatus.removed);
-    });
+        expect(gallery.hasVisiblePhotos, isFalse);
+        expect(photos.gallery.map((p) => p.assetId), contains('a'));
+        final links = await history.fetchPhotoLinks('user-1', 'walk-1');
+        expect(links.single.status, PhotoLinkStatus.removed);
+      },
+    );
 
     test('a removed suggestion is not suggested again', () async {
       final photo = photoAt('a', minutesIn(5));
@@ -239,25 +252,26 @@ void main() {
       expect(idsIn(sectionFor(after, 'red_stop_1').items), ['kept']);
     });
 
-    test('photos linked on another device are counted, not called deleted',
-        () async {
-      final photo = photoAt('a', minutesIn(5));
-      photos.gallery.add(photo);
-      await service.assignPhotos(walk, [photo], promptId: 'red_stop_1#0');
+    test(
+      'photos linked on another device are counted, not called deleted',
+      () async {
+        final photo = photoAt('a', minutesIn(5));
+        photos.gallery.add(photo);
+        await service.assignPhotos(walk, [photo], promptId: 'red_stop_1#0');
 
-      // The same account on a new phone, where asset "a" doesn't exist.
-      final otherPhone = FakeLocalPhotoService(installId: 'install-b');
-      final gallery = await WalkGalleryService(
-        photos: otherPhone,
-        history: history,
-      ).loadGallery(walk);
+        // The same account on a new phone, where asset "a" doesn't exist.
+        final otherPhone = FakeLocalPhotoService(installId: 'install-b');
+        final gallery = await WalkGalleryService(
+          photos: otherPhone,
+          history: history,
+        ).loadGallery(walk);
 
-      expect(gallery.missing, isEmpty);
-      expect(gallery.otherDeviceCount, 1);
-    });
+        expect(gallery.missing, isEmpty);
+        expect(gallery.otherDeviceCount, 1);
+      },
+    );
 
-    test('ignores an asset ID that now belongs to a different photo',
-        () async {
+    test('ignores an asset ID that now belongs to a different photo', () async {
       final photo = photoAt('a', minutesIn(5));
       photos.gallery.add(photo);
       await service.assignPhotos(walk, [photo], promptId: 'red_stop_1#0');

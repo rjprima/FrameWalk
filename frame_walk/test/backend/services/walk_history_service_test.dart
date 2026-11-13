@@ -4,7 +4,7 @@ import 'package:frame_walk/backend/services/walk_history_service.dart';
 import 'package:frame_walk/models/walk_photo_link.dart';
 import 'package:frame_walk/models/walk_record.dart';
 
-import 'fakes/fake_local_photo_service.dart';
+import '../../fakes/fake_local_photo_service.dart';
 
 void main() {
   late FakeFirebaseFirestore firestore;
@@ -33,8 +33,12 @@ void main() {
       final data = doc.data()!;
       expect(data['userId'], 'user-1');
       expect(data['routeId'], '1');
-      expect(data['stopIds'],
-          ['red_stop_1', 'red_stop_2', 'red_stop_3', 'red_stop_4']);
+      expect(data['stopIds'], [
+        'red_stop_1',
+        'red_stop_2',
+        'red_stop_3',
+        'red_stop_4',
+      ]);
       expect(data['promptIds'], contains('red_stop_1#0'));
       final firstStop = (data['stops'] as List).first as Map;
       expect(firstStop['latitude'], 47.6559);
@@ -43,19 +47,23 @@ void main() {
       final loaded = WalkRecord.fromMap(doc.id, data);
       expect(loaded.startedAt, walkStart);
       expect(loaded.completedAt, walkEnd);
-      expect(loaded.stops.first.prompts.single.text,
-          startsWith('Capture an interesting pattern'));
+      expect(
+        loaded.stops.first.prompts.single.text,
+        startsWith('Capture an interesting pattern'),
+      );
     });
 
-    test('adds to the completed-route count without touching other stats',
-        () async {
-      await service.saveCompletedWalk(redSquareWalk(id: ''));
+    test(
+      'adds to the completed-route count without touching other stats',
+      () async {
+        await service.saveCompletedWalk(redSquareWalk(id: ''));
 
-      final user = await firestore.collection('users').doc('user-1').get();
-      expect(user['routesCompleted'], 3);
-      expect(user['photosTaken'], 7);
-      expect(user['username'], 'walker');
-    });
+        final user = await firestore.collection('users').doc('user-1').get();
+        expect(user['routesCompleted'], 3);
+        expect(user['photosTaken'], 7);
+        expect(user['username'], 'walker');
+      },
+    );
 
     test('rejects a walk that ends before it starts', () {
       expect(
@@ -102,8 +110,10 @@ void main() {
       expect(walks.map((w) => w.routeId), ['1', '2', '1']);
 
       final routes = WalkHistoryService.groupByRoute(walks);
-      expect(routes.map((r) => r.routeTitle),
-          ['Red Square Walk', 'UW Nature Walk']);
+      expect(routes.map((r) => r.routeTitle), [
+        'Red Square Walk',
+        'UW Nature Walk',
+      ]);
       expect(routes.first.walks, hasLength(2));
       expect(routes.first.lastWalkedAt, newer.completedAt);
     });
@@ -115,35 +125,43 @@ void main() {
 
   group('Photo links', () {
     WalkPhotoLink link({String? promptId}) => WalkPhotoLink(
-          id: WalkPhotoLink.idFor(
-            deviceInstallId: 'install-a',
-            assetId: '1001',
-          ),
-          userId: 'user-1',
-          walkId: 'walk-1',
-          routeId: '1',
-          assetId: '1001',
-          platform: 'android',
-          deviceInstallId: 'install-a',
-          takenAt: walkStart,
-          width: 4000,
-          height: 3000,
-          stopId: promptId == null ? null : 'red_stop_1',
-          promptId: promptId,
-        );
+      id: WalkPhotoLink.idFor(deviceInstallId: 'install-a', assetId: '1001'),
+      userId: 'user-1',
+      walkId: 'walk-1',
+      routeId: '1',
+      assetId: '1001',
+      platform: 'android',
+      deviceInstallId: 'install-a',
+      takenAt: walkStart,
+      width: 4000,
+      height: 3000,
+      stopId: promptId == null ? null : 'red_stop_1',
+      promptId: promptId,
+    );
 
     test('stores a reference and metadata, never image data', () async {
       await service.savePhotoLink(link(promptId: 'red_stop_1#0'));
 
-      final docs =
-          await firestore.collection('users/user-1/walks/walk-1/photoLinks').get();
+      final docs = await firestore
+          .collection('users/user-1/walks/walk-1/photoLinks')
+          .get();
       final data = docs.docs.single.data();
       expect(data.keys, containsAll(['assetId', 'deviceInstallId', 'takenAt']));
       expect(
         data.keys.toSet().difference({
-          'userId', 'walkId', 'routeId', 'assetId', 'platform',
-          'deviceInstallId', 'takenAt', 'width', 'height', 'stopId',
-          'promptId', 'status', 'updatedAt',
+          'userId',
+          'walkId',
+          'routeId',
+          'assetId',
+          'platform',
+          'deviceInstallId',
+          'takenAt',
+          'width',
+          'height',
+          'stopId',
+          'promptId',
+          'status',
+          'updatedAt',
         }),
         isEmpty,
       );
