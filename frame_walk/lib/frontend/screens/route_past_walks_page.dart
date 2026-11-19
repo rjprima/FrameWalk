@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -36,14 +35,15 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+      ),
       body: Consumer<ProfileProvider>(
         builder: (context, profile, child) {
-          if (profile.isLoading ||
-              profile.status == ProfileStatus.initial) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+          if (profile.isLoading || profile.status == ProfileStatus.initial) {
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (profile.status == ProfileStatus.signedOut) {
@@ -57,9 +57,7 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    profile.errorMessage ?? 'Could not load your walks.',
-                  ),
+                  Text(profile.errorMessage ?? 'Could not load your walks.'),
                   TextButton(
                     onPressed: profile.refresh,
                     child: const Text('Try again'),
@@ -70,18 +68,19 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
           }
 
           // Only show completed walks belonging to this route.
-          final walks = profile.walkedRoutes
-              .where((walk) => walk.routeId == widget.routeId)
-              .toList()
-            ..sort(
-              (a, b) => (b.completedAt ?? DateTime(0))
-                  .compareTo(a.completedAt ?? DateTime(0)),
-            );
+          final walks =
+              profile.walkedRoutes
+                  .where((walk) => walk.routeId == widget.routeId)
+                  .toList()
+                ..sort(
+                  (a, b) => (b.completedAt ?? DateTime(0)).compareTo(
+                    a.completedAt ?? DateTime(0),
+                  ),
+                );
 
           // The number of stops is the same for each completed walk
           // of this route, so use the first walk to get that count.
-          final stopCount =
-              walks.isEmpty ? 0 : walks.first.stops.length;
+          final stopCount = walks.isEmpty ? 0 : walks.first.stops.length;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,9 +109,7 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
 
               if (walks.isEmpty)
                 const Expanded(
-                  child: Center(
-                    child: Text('No completed walks found.'),
-                  ),
+                  child: Center(child: Text('No completed walks found.')),
                 )
               else
                 Expanded(
@@ -124,10 +121,7 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
                         walk: walks[index],
                         photoService: _photoService,
                         onTap: () {
-                          WalkGalleryPage.open(
-                            context,
-                            walks[index].id,
-                          );
+                          WalkGalleryPage.open(context, walks[index].id);
                         },
                       );
                     },
@@ -172,9 +166,8 @@ class _PastWalkTileState extends State<_PastWalkTile> {
 
     final date = widget.walk.completedAt == null
         ? 'Date unavailable'
-        : MaterialLocalizations.of(context).formatMediumDate(
-            widget.walk.completedAt!.toLocal(),
-          );
+        : MaterialLocalizations.of(context)
+              .formatMediumDate(widget.walk.completedAt!.toLocal());
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -186,22 +179,13 @@ class _PastWalkTileState extends State<_PastWalkTile> {
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(8),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: 8,
-                horizontal: 4,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
               child: Row(
                 children: [
-                  Text(
-                    date,
-                    style: theme.textTheme.titleLarge,
-                  ),
+                  Text(date, style: theme.textTheme.titleLarge),
                   const SizedBox(width: 4),
                   const Spacer(),
-                  const Icon(
-                    Icons.place_outlined,
-                    size: 16,
-                  ),
+                  const Icon(Icons.place_outlined, size: 16),
                   const SizedBox(width: 4),
                   Text(
                     '${widget.walk.stops.length} stops',
@@ -219,9 +203,7 @@ class _PastWalkTileState extends State<_PastWalkTile> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
                 );
               }
 

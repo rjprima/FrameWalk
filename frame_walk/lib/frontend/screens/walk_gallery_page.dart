@@ -25,9 +25,7 @@ class WalkGalleryPage extends StatefulWidget {
     return Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) => WalkGalleryPage(
-          walkedRouteId: walkedRouteId,
-        ),
+        builder: (_) => WalkGalleryPage(walkedRouteId: walkedRouteId),
       ),
     );
   }
@@ -37,8 +35,7 @@ class WalkGalleryPage extends StatefulWidget {
 }
 
 class _WalkGalleryPageState extends State<WalkGalleryPage> {
-  late final WalkPhotoService _service =
-      widget.service ?? WalkPhotoService();
+  late final WalkPhotoService _service = widget.service ?? WalkPhotoService();
 
   late Future<WalkPhotoGallery> _gallery;
 
@@ -77,6 +74,8 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return FutureBuilder<WalkPhotoGallery>(
       future: _gallery,
       builder: (context, snapshot) {
@@ -84,28 +83,42 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
 
         final date = gallery?.walk.completedAt == null
             ? 'Walk photos'
-            : MaterialLocalizations.of(context).formatMediumDate(
-                gallery!.walk.completedAt!.toLocal(),
-              );
+            : MaterialLocalizations.of(context)
+                  .formatMediumDate(gallery!.walk.completedAt!.toLocal());
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(date),
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: Theme.of(context).colorScheme.surface,
           ),
           floatingActionButton: gallery == null
               ? null
               : FloatingActionButton.extended(
                   onPressed: () => _openEditor(gallery),
-                  icon: const Icon(
-                    Icons.add_photo_alternate_outlined,
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: Text(
-                    gallery.photos.isEmpty
-                        ? 'Add photos'
-                        : 'Add / edit photos',
+                    gallery.photos.isEmpty ? 'Add photos' : 'Add / edit photos',
                   ),
                 ),
-          body: _body(snapshot),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date heading below the back button.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Text(date, style: theme.textTheme.headlineMedium),
+              ),
+
+              Expanded(child: _body(snapshot)),
+            ],
+          ),
         );
       },
     );
@@ -122,9 +135,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                error is PhotoFailure
-                    ? error.message
-                    : 'Could not load photos',
+                error is PhotoFailure ? error.message : 'Could not load photos',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -141,9 +152,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
     final gallery = snapshot.data;
 
     if (gallery == null) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     final sections = [
@@ -153,10 +162,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
           subtitle: prompt.prompt,
           photos: gallery.photosForStop(prompt.stopId),
         ),
-      _Section(
-        title: 'No prompt',
-        photos: gallery.unassigned,
-      ),
+      _Section(title: 'No prompt', photos: gallery.unassigned),
     ];
 
     return RefreshIndicator(
@@ -165,13 +171,10 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
         await _gallery;
       },
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
         itemCount: sections.length,
         itemBuilder: (context, index) {
-          return _PromptSection(
-            section: sections[index],
-            service: _service,
-          );
+          return _PromptSection(section: sections[index], service: _service);
         },
       ),
     );
@@ -183,18 +186,11 @@ class _Section {
   final String? subtitle;
   final List<WalkPhoto> photos;
 
-  const _Section({
-    required this.title,
-    required this.photos,
-    this.subtitle,
-  });
+  const _Section({required this.title, required this.photos, this.subtitle});
 }
 
 class _PromptSection extends StatelessWidget {
-  const _PromptSection({
-    required this.section,
-    required this.service,
-  });
+  const _PromptSection({required this.section, required this.service});
 
   final _Section section;
   final WalkPhotoService service;
@@ -204,60 +200,94 @@ class _PromptSection extends StatelessWidget {
     final theme = Theme.of(context);
     final subtitle = section.subtitle;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    return Card(
+      color: Colors.white,
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(section.title, style: theme.textTheme.titleLarge),
+
+            if (subtitle != null && subtitle.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(subtitle, style: theme.textTheme.bodySmall),
+            ],
+
+            const SizedBox(height: 12),
+
+            if (section.photos.isEmpty)
+              _EmptyPhotoPlaceholder()
+            else
+              // Horizontally scrolling photos for this prompt.
+              SizedBox(
+                height: 110,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: section.photos.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final photo = section.photos[index];
+
+                    return SizedBox(
+                      width: 110,
+                      height: 110,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: WalkPhotoThumbnail(
+                          key: ValueKey(photo.photoId),
+                          photo: photo,
+                          service: service,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Placeholder with the same dimensions and shape as a photo thumbnail.
+class _EmptyPhotoPlaceholder extends StatelessWidget {
+  const _EmptyPhotoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: 110,
+      height: 110,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Icon(
+            Icons.photo_library_outlined,
+            size: 26,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 8),
           Text(
-            section.title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+            'No photos yet',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-
-          if (subtitle != null && subtitle.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-
-          const SizedBox(height: 12),
-
-          if (section.photos.isEmpty)
-            Text(
-              'No photos yet',
-              style: theme.textTheme.bodySmall,
-            )
-          else
-            // Horizontally scrolling photos for this prompt.
-            SizedBox(
-              height: 110,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: section.photos.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final photo = section.photos[index];
-
-                  return SizedBox(
-                    width: 110,
-                    height: 110,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: WalkPhotoThumbnail(
-                        key: ValueKey(photo.photoId),
-                        photo: photo,
-                        service: service,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
         ],
       ),
     );
