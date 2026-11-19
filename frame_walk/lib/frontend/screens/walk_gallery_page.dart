@@ -255,6 +255,7 @@ class _PromptSection extends StatelessWidget {
   }
 }
 
+
 // Placeholder with the same dimensions and shape as a photo thumbnail.
 class _EmptyPhotoPlaceholder extends StatelessWidget {
   const _EmptyPhotoPlaceholder();
@@ -281,11 +282,16 @@ class _EmptyPhotoPlaceholder extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(height: 8),
-          Text(
-            'No photos yet',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              'No photos yet',
+              textAlign: TextAlign.center,
+              softWrap: true,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
