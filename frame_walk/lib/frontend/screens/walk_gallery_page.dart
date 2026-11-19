@@ -8,9 +8,7 @@ import '../utils/photo_picker.dart';
 import '../widgets/walk_photo_thumbnail.dart';
 import 'walk_photo_editor_page.dart';
 
-// Photos for one completed walk, grouped by the prompt they answer, plus a
-// "No prompt" group. A minimal screen for testing the photo backend; all
-// data access goes through WalkPhotoService.
+// Displays photos for one particular completed walk, grouped by prompt.
 class WalkGalleryPage extends StatefulWidget {
   const WalkGalleryPage({
     super.key,
@@ -27,7 +25,9 @@ class WalkGalleryPage extends StatefulWidget {
     return Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) => WalkGalleryPage(walkedRouteId: walkedRouteId),
+        builder: (_) => WalkGalleryPage(
+          walkedRouteId: walkedRouteId,
+        ),
       ),
     );
   }
@@ -37,7 +37,9 @@ class WalkGalleryPage extends StatefulWidget {
 }
 
 class _WalkGalleryPageState extends State<WalkGalleryPage> {
-  late final WalkPhotoService _service = widget.service ?? WalkPhotoService();
+  late final WalkPhotoService _service =
+      widget.service ?? WalkPhotoService();
+
   late Future<WalkPhotoGallery> _gallery;
 
   @override
@@ -48,6 +50,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
 
   void _reload() {
     final next = _service.fetchGallery(widget.walkedRouteId);
+
     setState(() {
       _gallery = next;
     });
@@ -64,9 +67,10 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
         ),
       ),
     );
-    // Some changes may have saved even if the editor was closed after an
-    // error, so always refresh. That includes the Account page's photo count.
+
+    // Refresh after returning from the editor.
     if (!mounted) return;
+
     _reload();
     context.read<ProfileProvider?>()?.refresh();
   }
@@ -77,17 +81,28 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
       future: _gallery,
       builder: (context, snapshot) {
         final gallery = snapshot.data;
+
+        final date = gallery?.walk.completedAt == null
+            ? 'Walk photos'
+            : MaterialLocalizations.of(context).formatMediumDate(
+                gallery!.walk.completedAt!.toLocal(),
+              );
+
         return Scaffold(
           appBar: AppBar(
-            title: Text(gallery?.walk.routeTitle ?? 'Walk photos'),
+            title: Text(date),
           ),
           floatingActionButton: gallery == null
               ? null
               : FloatingActionButton.extended(
                   onPressed: () => _openEditor(gallery),
-                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  icon: const Icon(
+                    Icons.add_photo_alternate_outlined,
+                  ),
                   label: Text(
-                    gallery.photos.isEmpty ? 'Add photos' : 'Add / edit photos',
+                    gallery.photos.isEmpty
+                        ? 'Add photos'
+                        : 'Add / edit photos',
                   ),
                 ),
           body: _body(snapshot),
@@ -99,6 +114,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
   Widget _body(AsyncSnapshot<WalkPhotoGallery> snapshot) {
     if (snapshot.hasError) {
       final error = snapshot.error;
+
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -106,7 +122,9 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                error is PhotoFailure ? error.message : 'Could not load photos',
+                error is PhotoFailure
+                    ? error.message
+                    : 'Could not load photos',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -119,9 +137,13 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
         ),
       );
     }
+
     final gallery = snapshot.data;
+
     if (gallery == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     final sections = [
@@ -131,18 +153,26 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
           subtitle: prompt.prompt,
           photos: gallery.photosForStop(prompt.stopId),
         ),
-      _Section(title: 'No prompt', photos: gallery.unassigned),
+      _Section(
+        title: 'No prompt',
+        photos: gallery.unassigned,
+      ),
     ];
+
     return RefreshIndicator(
       onRefresh: () async {
         _reload();
         await _gallery;
       },
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
         itemCount: sections.length,
-        itemBuilder: (context, index) =>
-            _PromptSection(section: sections[index], service: _service),
+        itemBuilder: (context, index) {
+          return _PromptSection(
+            section: sections[index],
+            service: _service,
+          );
+        },
       ),
     );
   }
@@ -153,46 +183,79 @@ class _Section {
   final String? subtitle;
   final List<WalkPhoto> photos;
 
-  const _Section({required this.title, required this.photos, this.subtitle});
+  const _Section({
+    required this.title,
+    required this.photos,
+    this.subtitle,
+  });
 }
 
 class _PromptSection extends StatelessWidget {
-  const _PromptSection({required this.section, required this.service});
+  const _PromptSection({
+    required this.section,
+    required this.service,
+  });
 
   final _Section section;
   final WalkPhotoService service;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
     final subtitle = section.subtitle;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${section.title} (${section.photos.length})',
-            style: textTheme.titleMedium,
+            section.title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          if (subtitle != null && subtitle.isNotEmpty)
-            Text(subtitle, style: textTheme.bodyMedium),
-          const SizedBox(height: 8),
+
+          if (subtitle != null && subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
           if (section.photos.isEmpty)
-            Text('No photos yet', style: textTheme.bodySmall)
+            Text(
+              'No photos yet',
+              style: theme.textTheme.bodySmall,
+            )
           else
+            // Horizontally scrolling photos for this prompt.
             SizedBox(
-              height: 96,
-              // Horizontal builder, so only visible thumbnails download.
+              height: 110,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: section.photos.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) => WalkPhotoThumbnail(
-                  key: ValueKey(section.photos[index].photoId),
-                  photo: section.photos[index],
-                  service: service,
-                ),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final photo = section.photos[index];
+
+                  return SizedBox(
+                    width: 110,
+                    height: 110,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: WalkPhotoThumbnail(
+                        key: ValueKey(photo.photoId),
+                        photo: photo,
+                        service: service,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
         ],
