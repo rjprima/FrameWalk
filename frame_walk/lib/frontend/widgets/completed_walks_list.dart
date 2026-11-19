@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,8 +5,9 @@ import '../../backend/providers/profile_provider.dart';
 import '../../models/walked_route.dart';
 import '../screens/route_past_walks_page.dart';
 
-// Displays each unique route the user has completed - if they've done a route multiple times, it shows up once.
-// Tapping a route opens the history of walks for that route.
+/// Displays each unique route the user has completed - if they've done a
+/// route multiple times, it shows up once. Tapping a route opens the history of
+/// walks for that route.
 class CompletedWalksList extends StatelessWidget {
   const CompletedWalksList({super.key});
 
@@ -15,35 +15,8 @@ class CompletedWalksList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ProfileProvider>(
       builder: (context, profile, child) {
-        if (profile.isLoading ||
-            profile.status == ProfileStatus.initial) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
 
-        if (profile.status == ProfileStatus.signedOut) {
-          return const Center(
-            child: Text('Please log in to view your walks.'),
-          );
-        }
-
-        if (profile.status == ProfileStatus.error) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  profile.errorMessage ?? 'Could not load your walks.',
-                ),
-                TextButton(
-                  onPressed: profile.refresh,
-                  child: const Text('Try again'),
-                ),
-              ],
-            ),
-          );
-        }
+        checkValidProfileState(profile);
 
         // Group completed walks by route ID.
         final groupedWalks = <String, List<WalkedRoute>>{};
@@ -55,8 +28,9 @@ class CompletedWalksList extends StatelessWidget {
         // Sort individual walks within each route, newest first.
         for (final walks in groupedWalks.values) {
           walks.sort(
-            (a, b) => (b.completedAt ?? DateTime(0))
-                .compareTo(a.completedAt ?? DateTime(0)),
+            (a, b) => (b.completedAt ?? DateTime(0)).compareTo(
+              a.completedAt ?? DateTime(0),
+            ),
           );
         }
 
@@ -76,9 +50,7 @@ class CompletedWalksList extends StatelessWidget {
               if (routes.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 80),
-                  child: Center(
-                    child: Text('No previous walks yet.'),
-                  ),
+                  child: Center(child: Text('No previous walks yet.')),
                 )
               else
                 ...routes.map((entry) {
@@ -113,6 +85,33 @@ class CompletedWalksList extends StatelessWidget {
   }
 }
 
+Center checkValidProfileState(ProfileProvider profile){
+  if (profile.isLoading || profile.status == ProfileStatus.initial) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (profile.status == ProfileStatus.signedOut) {
+          return const Center(child: Text('Please log in to view your walks.'));
+        }
+
+        if (profile.status == ProfileStatus.error) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(profile.errorMessage ?? 'Could not load your walks.'),
+                TextButton(
+                  onPressed: profile.refresh,
+                  child: const Text('Try again'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Center(child: Text('Something went wrong, please reload to try again'));
+}
+
 class _RouteHistoryCard extends StatelessWidget {
   const _RouteHistoryCard({
     required this.routeTitle,
@@ -132,9 +131,8 @@ class _RouteHistoryCard extends StatelessWidget {
 
     final date = latestWalk.completedAt == null
         ? 'Date unavailable'
-        : MaterialLocalizations.of(context).formatMediumDate(
-            latestWalk.completedAt!.toLocal(),
-          );
+        : MaterialLocalizations.of(context)
+              .formatMediumDate(latestWalk.completedAt!.toLocal());
 
     return Card(
       color: Colors.white,
@@ -152,15 +150,10 @@ class _RouteHistoryCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       routeTitle.isEmpty ? 'Walk' : routeTitle,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey,
-                  ),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
                 ],
               ),
               const SizedBox(height: 8),
