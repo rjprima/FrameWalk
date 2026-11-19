@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -42,6 +43,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
 
   Future<void> _addPhotos() async {
     final List<PickedPhoto> picked;
+
     try {
       picked = await widget.pickPhotos();
     } on PlatformException catch (error) {
@@ -50,7 +52,9 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       );
       return;
     }
+
     final rejected = <String>[];
+
     setState(() {
       for (final photo in picked) {
         try {
@@ -62,6 +66,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
         }
       }
     });
+
     if (rejected.isNotEmpty) {
       _showMessage('Not added:\n${rejected.join('\n')}');
     }
@@ -81,6 +86,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       _progress = null;
       _errors = const [];
     });
+
     try {
       final result = await widget.service.saveChanges(
         _walkId,
@@ -89,7 +95,9 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
           if (mounted) setState(() => _progress = progress);
         },
       );
+
       if (!mounted) return;
+
       setState(() {
         _saving = false;
         _saved = result.photos;
@@ -97,6 +105,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
         _changes = result.remaining;
         _errors = result.errors;
       });
+
       if (result.isComplete) {
         _showMessage('Photos saved');
         Navigator.pop(context);
@@ -105,6 +114,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       }
     } on PhotoFailure catch (failure) {
       if (!mounted) return;
+
       setState(() {
         _saving = false;
         _errors = [
@@ -115,6 +125,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
           ),
         ];
       });
+
       _showMessage(failure.message);
     }
   }
@@ -136,6 +147,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
         ],
       ),
     );
+
     if (discard == true && mounted) Navigator.pop(context);
   }
 
@@ -149,8 +161,8 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
 
   String? _currentStop(WalkPhoto photo) =>
       _changes.stopChanges.containsKey(photo.photoId)
-      ? _changes.stopChanges[photo.photoId]
-      : photo.stopId;
+          ? _changes.stopChanges[photo.photoId]
+          : photo.stopId;
 
   String? _errorFor(String photoId) {
     for (final error in _errors) {
@@ -164,13 +176,16 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
     final visibleSaved = _saved
         .where((photo) => !_changes.deletions.contains(photo.photoId))
         .toList();
+
     final additions = _changes.additions;
+
     final rows = <Widget>[
       for (final photo in additions)
         _PhotoRow(
           key: ValueKey(photo.photoId),
           thumbnail: PhotoBytesThumbnail(bytes: photo.bytes, size: 72),
-          label: 'New${photo.fileName == null ? '' : ' · ${photo.fileName}'}',
+          // Do not display the generated filename from the image picker.
+          label: 'New photo',
           stopId: photo.stopId,
           prompts: widget.gallery.prompts,
           error: _errorFor(photo.photoId),
@@ -197,6 +212,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
           onRemove: () => _remove(photo.photoId),
         ),
     ];
+
     final generalErrors = _errors.where((e) => e.photoId == null).toList();
     final pendingDeletes = _changes.deletions.length;
 
@@ -257,8 +273,8 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
                 _saving
                     ? 'Saving...'
                     : _errors.isNotEmpty && !_changes.isEmpty
-                    ? 'Retry failed changes (${_changes.changeCount})'
-                    : 'Save',
+                        ? 'Retry failed changes (${_changes.changeCount})'
+                        : 'Save',
               ),
             ),
           ),
@@ -293,6 +309,7 @@ class _PhotoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final error = this.error;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -302,14 +319,20 @@ class _PhotoRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: Theme.of(context).textTheme.labelMedium),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               DropdownButton<String>(
                 isExpanded: true,
+                // Allow menu items to grow vertically to fit their text.
+                itemHeight: null,
+                dropdownColor: Colors.white,
                 value: stopId ?? _noPrompt,
                 onChanged: enabled
                     ? (value) => onStopChanged(
-                        value == null || value == _noPrompt ? null : value,
-                      )
+                          value == null || value == _noPrompt ? null : value,
+                        )
                     : null,
                 items: [
                   const DropdownMenuItem(
@@ -319,11 +342,16 @@ class _PhotoRow extends StatelessWidget {
                   for (final prompt in prompts)
                     DropdownMenuItem(
                       value: prompt.stopId,
-                      child: Text(
-                        prompt.prompt.isEmpty
-                            ? prompt.stopName
-                            : '${prompt.stopName}: ${prompt.prompt}',
-                        overflow: TextOverflow.ellipsis,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          prompt.prompt.isEmpty
+                              ? prompt.stopName
+                              : '${prompt.stopName}: ${prompt.prompt}',
+                          softWrap: true,
+                          maxLines: null,
+                          overflow: TextOverflow.visible,
+                        ),
                       ),
                     ),
                 ],
@@ -331,7 +359,9 @@ class _PhotoRow extends StatelessWidget {
               if (error != null)
                 Text(
                   error,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                 ),
             ],
           ),
@@ -354,6 +384,7 @@ class _ProgressBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = this.progress;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
@@ -365,7 +396,7 @@ class _ProgressBanner extends StatelessWidget {
             progress == null || progress.photosTotal == 0
                 ? 'Saving...'
                 : 'Uploaded ${progress.photosUploaded} of '
-                      '${progress.photosTotal} photos',
+                    '${progress.photosTotal} photos',
           ),
         ],
       ),
@@ -381,6 +412,7 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -389,7 +421,10 @@ class _ErrorBanner extends StatelessWidget {
         color: colors.errorContainer,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(message, style: TextStyle(color: colors.onErrorContainer)),
+      child: Text(
+        message,
+        style: TextStyle(color: colors.onErrorContainer),
+      ),
     );
   }
 }
