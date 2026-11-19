@@ -1,0 +1,13 @@
+.git
+.github
+frame_walk/.dart_tool
+frame_walk/build
+frame_walk/.flutter-plugins
+frame_walk/.flutter-plugins-dependencies
+frame_walk/android/.gradle
+frame_walk/android/local.properties
+frame_walk/ios/Pods
+frame_walk/macos/Pods
+frame_walk/linux/build
+frame_walk/windows/flutter/ephemeral
+maps-api-key.txt
