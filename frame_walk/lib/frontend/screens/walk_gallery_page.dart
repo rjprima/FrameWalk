@@ -8,7 +8,8 @@ import '../utils/photo_picker.dart';
 import '../widgets/walk_photo_thumbnail.dart';
 import 'walk_photo_editor_page.dart';
 
-// Displays photos for one particular completed walk, grouped by prompt.
+// Displays photos for one particular completed walk, grouped by prompt. Users can also
+// add photos using this page
 class WalkGalleryPage extends StatefulWidget {
   const WalkGalleryPage({
     super.key,

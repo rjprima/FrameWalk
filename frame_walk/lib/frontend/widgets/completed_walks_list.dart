@@ -15,7 +15,7 @@ class CompletedWalksList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ProfileProvider>(
       builder: (context, profile, child) {
-
+        // check that the profile provider has a valid state to be loaded
         checkValidProfileState(profile);
 
         // Group completed walks by route ID.
@@ -85,31 +85,40 @@ class CompletedWalksList extends StatelessWidget {
   }
 }
 
-Center checkValidProfileState(ProfileProvider profile){
+// Checks that the profile provider has a valid state to be loaded
+// Returns the Center widget to display with the correct error message
+Center checkValidProfileState(ProfileProvider profile) {
+  // checks if profile is loading or in the initial state
   if (profile.isLoading || profile.status == ProfileStatus.initial) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return const Center(child: CircularProgressIndicator());
+  }
 
-        if (profile.status == ProfileStatus.signedOut) {
-          return const Center(child: Text('Please log in to view your walks.'));
-        }
+  /// should be dead code since to get to this page user must be signed in -
+  /// leaving it in case one day a "guest" mode is added
+  if (profile.status == ProfileStatus.signedOut) {
+    return const Center(child: Text('Please log in to view your walks.'));
+  }
 
-        if (profile.status == ProfileStatus.error) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(profile.errorMessage ?? 'Could not load your walks.'),
-                TextButton(
-                  onPressed: profile.refresh,
-                  child: const Text('Try again'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Center(child: Text('Something went wrong, please reload to try again'));
+  // checks if loading failed
+  if (profile.status == ProfileStatus.error) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(profile.errorMessage ?? 'Could not load your walks.'),
+          TextButton(
+            onPressed: profile.refresh,
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // default 
+  return Center(
+    child: Text('Something went wrong, please reload to try again'),
+  );
 }
 
 class _RouteHistoryCard extends StatelessWidget {

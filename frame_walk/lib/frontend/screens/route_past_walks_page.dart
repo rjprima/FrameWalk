@@ -264,8 +264,7 @@ class _PastWalkTileState extends State<_PastWalkTile> {
                 );
               }
 
-              // Display a small preview of this walk's photos.
-              // The photos scroll horizontally instead of appearing in a grid.
+              // Display a small preview of this walk's photos - displays 4 photos
               final previewPhotos = photos.take(4).toList();
 
               return Card(
