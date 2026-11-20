@@ -9,7 +9,7 @@ import '../widgets/walk_photo_thumbnail.dart';
 import 'walk_photo_editor_page.dart';
 
 // Displays photos for one particular completed walk, grouped by prompt. Users can also
-// add photos using this page
+// add photos by clicking a button on this page
 class WalkGalleryPage extends StatefulWidget {
   const WalkGalleryPage({
     super.key,
@@ -54,6 +54,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
     });
   }
 
+  // opens the walk photo editor page
   Future<void> _openEditor(WalkPhotoGallery gallery) async {
     await Navigator.push<void>(
       context,
@@ -89,6 +90,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
 
         return Scaffold(
           appBar: AppBar(
+            // these three lines make it so scrolling doesn't change the color of the AppBar
             scrolledUnderElevation: 0,
             surfaceTintColor: Colors.transparent,
             backgroundColor: Theme.of(context).colorScheme.surface,
@@ -126,6 +128,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
     );
   }
 
+  // creates the body of the page - cards organized by prompt displaying the photos associated with them
   Widget _body(AsyncSnapshot<WalkPhotoGallery> snapshot) {
     if (snapshot.hasError) {
       final error = snapshot.error;
@@ -183,6 +186,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
   }
 }
 
+// a section to be used for each indivivdual card
 class _Section {
   final String title;
   final String? subtitle;
@@ -258,7 +262,7 @@ class _PromptSection extends StatelessWidget {
 }
 
 
-// Placeholder with the same dimensions and shape as a photo thumbnail.
+// Placeholder for a route stop with no photos with the same dimensions and shape as a photo thumbnail
 class _EmptyPhotoPlaceholder extends StatelessWidget {
   const _EmptyPhotoPlaceholder();
 
