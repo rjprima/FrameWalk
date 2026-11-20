@@ -172,6 +172,8 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     final visibleSaved = _saved
         .where((photo) => !_changes.deletions.contains(photo.photoId))
         .toList();
@@ -183,7 +185,6 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
         _PhotoRow(
           key: ValueKey(photo.photoId),
           thumbnail: PhotoBytesThumbnail(bytes: photo.bytes, size: 72),
-          // Do not display the generated filename from the image picker.
           label: 'New photo',
           stopId: photo.stopId,
           prompts: widget.gallery.prompts,
@@ -222,23 +223,54 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Edit photos'),
-          actions: [
-            IconButton(
-              tooltip: 'Add photos',
-              onPressed: _saving ? null : _addPhotos,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-            ),
-          ],
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
-          backgroundColor: Theme.of(context).colorScheme.surface,
+          backgroundColor: theme.colorScheme.surface,
         ),
         body: Column(
           children: [
+            // Page title and Save button below the back button.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Edit Photos',
+                      style: theme.textTheme.headlineMedium,
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _saving || _changes.isEmpty ? null : _save,
+                    icon: const Icon(Icons.check, size: 22),
+                    label: Text(
+                      _saving
+                          ? 'Saving...'
+                          : _errors.isNotEmpty && !_changes.isEmpty
+                          ? 'Retry'
+                          : 'Save',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(140, 42),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             if (_saving) _ProgressBanner(progress: _progress),
+
             for (final error in generalErrors)
               _ErrorBanner(message: error.message),
+
             if (pendingDeletes > 0)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -248,15 +280,10 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
                   'Your device photos are not affected.',
                 ),
               ),
+
             Expanded(
               child: rows.isEmpty
-                  ? Center(
-                      child: TextButton.icon(
-                        onPressed: _saving ? null : _addPhotos,
-                        icon: const Icon(Icons.add_photo_alternate_outlined),
-                        label: const Text('Add photos'),
-                      ),
-                    )
+                  ? const SizedBox.shrink()
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: rows.length,
@@ -266,17 +293,27 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
             ),
           ],
         ),
+
+        // Add photos button at the bottom of the page.
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: FilledButton(
-              onPressed: _saving || _changes.isEmpty ? null : _save,
-              child: Text(
-                _saving
-                    ? 'Saving...'
-                    : _errors.isNotEmpty && !_changes.isEmpty
-                    ? 'Retry failed changes (${_changes.changeCount})'
-                    : 'Save',
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _addPhotos,
+                icon: const Icon(Icons.add, size: 26),
+                label: const Text('Add photos', style: TextStyle(fontSize: 16)),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
           ),
