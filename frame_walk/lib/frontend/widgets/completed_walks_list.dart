@@ -18,14 +18,19 @@ class CompletedWalksList extends StatelessWidget {
         // check that the profile provider has a valid state to be loaded
         checkValidProfileState(profile);
 
-        // Group completed walks by route ID.
+        /// group completed walks by route ID - means each unique route shows once
+        /// String is the route ID, List<WalkedRoute> is the list of completed walks
+        /// along that route
         final groupedWalks = <String, List<WalkedRoute>>{};
 
+        /// looping through the walked routes from profile provider. adds the route to the 
+        /// groupedWalks Map if it isn't already there and adds the individual walk to 
+        /// the WalkedRoute list associated with the Map route entry 
         for (final walk in profile.walkedRoutes) {
           groupedWalks.putIfAbsent(walk.routeId, () => []).add(walk);
         }
 
-        // Sort individual walks within each route, newest first.
+        // sort individual walks within each route, newest first.
         for (final walks in groupedWalks.values) {
           walks.sort(
             (a, b) => (b.completedAt ?? DateTime(0)).compareTo(
@@ -36,12 +41,13 @@ class CompletedWalksList extends StatelessWidget {
 
         // Sort routes by their most recent completion date.
         final routes = groupedWalks.entries.toList()
-          ..sort((a, b) {
+          ..sort((a, b) { // .. is the cascade operator, allows performing a sequence of operations
             final aDate = a.value.first.completedAt ?? DateTime(0);
             final bDate = b.value.first.completedAt ?? DateTime(0);
             return bDate.compareTo(aDate);
           });
 
+        // using RefreshIndicator to implement pull-to-refresh functionality
         return RefreshIndicator(
           onRefresh: profile.refresh,
           child: ListView(
@@ -53,9 +59,9 @@ class CompletedWalksList extends StatelessWidget {
                   child: Center(child: Text('No previous walks yet.')),
                 )
               else
-                ...routes.map((entry) {
-                  final walks = entry.value;
-                  final latestWalk = walks.first;
+                ...routes.map((entry) { // ... is the spread operator, it allows the elements from routes.map to be inserted directly into the ListView's children list
+                  final walks = entry.value; // the list of walks
+                  final latestWalk = walks.first; // the latest walk, since each walks list was sorted earlier we can just take the first element
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
@@ -121,6 +127,7 @@ Center checkValidProfileState(ProfileProvider profile) {
   );
 }
 
+// A card to represent a route that has been walked at least once
 class _RouteHistoryCard extends StatelessWidget {
   const _RouteHistoryCard({
     required this.routeTitle,
