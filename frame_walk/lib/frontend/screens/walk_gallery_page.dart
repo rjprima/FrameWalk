@@ -106,6 +106,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: Text(
                     gallery.photos.isEmpty ? 'Add photos' : 'Add / edit photos',
+                    style: TextStyle(fontWeight: FontWeight.bold)
                   ),
                 ),
           body: Column(

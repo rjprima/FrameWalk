@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -161,8 +160,8 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
 
   String? _currentStop(WalkPhoto photo) =>
       _changes.stopChanges.containsKey(photo.photoId)
-          ? _changes.stopChanges[photo.photoId]
-          : photo.stopId;
+      ? _changes.stopChanges[photo.photoId]
+      : photo.stopId;
 
   String? _errorFor(String photoId) {
     for (final error in _errors) {
@@ -231,6 +230,9 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
               icon: const Icon(Icons.add_photo_alternate_outlined),
             ),
           ],
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: Theme.of(context).colorScheme.surface,
         ),
         body: Column(
           children: [
@@ -273,8 +275,8 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
                 _saving
                     ? 'Saving...'
                     : _errors.isNotEmpty && !_changes.isEmpty
-                        ? 'Retry failed changes (${_changes.changeCount})'
-                        : 'Save',
+                    ? 'Retry failed changes (${_changes.changeCount})'
+                    : 'Save',
               ),
             ),
           ),
@@ -319,10 +321,7 @@ class _PhotoRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
+              Text(label, style: Theme.of(context).textTheme.labelMedium),
               DropdownButton<String>(
                 isExpanded: true,
                 // Allow menu items to grow vertically to fit their text.
@@ -331,8 +330,8 @@ class _PhotoRow extends StatelessWidget {
                 value: stopId ?? _noPrompt,
                 onChanged: enabled
                     ? (value) => onStopChanged(
-                          value == null || value == _noPrompt ? null : value,
-                        )
+                        value == null || value == _noPrompt ? null : value,
+                      )
                     : null,
                 items: [
                   const DropdownMenuItem(
@@ -359,9 +358,7 @@ class _PhotoRow extends StatelessWidget {
               if (error != null)
                 Text(
                   error,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
             ],
           ),
@@ -396,7 +393,7 @@ class _ProgressBanner extends StatelessWidget {
             progress == null || progress.photosTotal == 0
                 ? 'Saving...'
                 : 'Uploaded ${progress.photosUploaded} of '
-                    '${progress.photosTotal} photos',
+                      '${progress.photosTotal} photos',
           ),
         ],
       ),
@@ -421,10 +418,7 @@ class _ErrorBanner extends StatelessWidget {
         color: colors.errorContainer,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        message,
-        style: TextStyle(color: colors.onErrorContainer),
-      ),
+      child: Text(message, style: TextStyle(color: colors.onErrorContainer)),
     );
   }
 }
