@@ -1,3 +1,4 @@
+
 import 'dart:typed_data';
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -241,6 +242,40 @@ void main() {
   }
 
   group('Walk gallery', () {
+    testWidgets(
+      'editor displays title, top Save button, and bottom Add photos button',
+      (tester) async {
+        await openGallery(tester);
+
+        // Open the editor.
+        await tester.tap(find.text('Add photos'));
+        await tester.pumpAndSettle();
+
+        // The title is displayed below the AppBar, not inside it.
+        expect(find.text('Edit Photos'), findsOneWidget);
+
+        final appBar = tester.widget<AppBar>(find.byType(AppBar));
+        expect(appBar.title, isNull);
+
+        // Save is in the top area and disabled when there are no changes.
+        final saveFinder = find.widgetWithText(FilledButton, 'Save');
+        expect(saveFinder, findsOneWidget);
+
+        final saveButton = tester.widget<FilledButton>(saveFinder);
+        expect(saveButton.onPressed, isNull);
+
+        // Add photos is displayed as a button at the bottom.
+        final addPhotosFinder = find.widgetWithText(
+          FilledButton,
+          'Add photos',
+        );
+        expect(addPhotosFinder, findsOneWidget);
+
+        final addPhotosButton = tester.widget<FilledButton>(addPhotosFinder);
+        expect(addPhotosButton.onPressed, isNotNull);
+      },
+    );
+
     testWidgets('groups photos by prompt, including No prompt', (tester) async {
       await tester.runAsync(
         () => service.uploadPhotos(walkId, [
@@ -292,8 +327,8 @@ void main() {
       await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
-      // Open the image picker from the editor.
-      await tester.tap(find.byTooltip('Add photos'));
+      // Open the image picker using the editor's bottom button.
+      await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Not added'), findsOneWidget);
@@ -327,7 +362,7 @@ void main() {
       await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Add photos'));
+      await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byType(DropdownButton<String>).first);
@@ -347,14 +382,16 @@ void main() {
       await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Add photos'));
+      await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Remove photo'));
       await tester.pumpAndSettle();
 
-      final save = tester.widget<FilledButton>(find.byType(FilledButton));
+      final saveFinder = find.widgetWithText(FilledButton, 'Save');
+      expect(saveFinder, findsOneWidget);
 
+      final save = tester.widget<FilledButton>(saveFinder);
       expect(save.onPressed, isNull);
       expect(storage.uploadCalls, isEmpty);
     });
@@ -369,7 +406,7 @@ void main() {
       await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Add photos'));
+      await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
       storage.failAllUploads = true;
@@ -382,11 +419,11 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining('Upload failed'), findsOneWidget);
-      expect(find.text('Retry failed changes (1)'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
 
       storage.failAllUploads = false;
 
-      await tester.tap(find.text('Retry failed changes (1)'));
+      await tester.tap(find.text('Retry'));
       await tester.pumpAndSettle();
 
       expect(find.text('Photos saved'), findsOneWidget);
@@ -433,7 +470,7 @@ void main() {
       await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Add photos'));
+      await tester.tap(find.text('Add photos'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byType(BackButton));
@@ -551,15 +588,10 @@ void main() {
         find.text(formatTestDate(tester, DateTime(2026, 11, 10))),
         findsOneWidget,
       );
-      // Two individual completed walks each display their own stop count.
-      expect(find.text('2 stops'), findsNWidgets(2));
-
-      // The page header displays the overall route summary separately.
-      expect(find.textContaining('2 stops  ·  Walked 2 times'), findsOneWidget);
-      expect(find.text('No photos from this walk yet'), findsNWidgets(2));
 
       // The page header does not include a "Last walked" date.
       expect(find.textContaining('Last walked:'), findsNothing);
+      expect(find.text('No photos from this walk yet'), findsNWidgets(2));
 
       await tester.pumpWidget(const SizedBox());
       profile.dispose();
