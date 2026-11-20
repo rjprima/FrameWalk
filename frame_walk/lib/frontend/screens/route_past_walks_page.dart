@@ -28,7 +28,7 @@ class RoutePastWalksPage extends StatefulWidget {
 
 class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
   late final WalkPhotoService _photoService =
-      widget.photoService ?? WalkPhotoService();
+      widget.photoService ?? WalkPhotoService(); // ?? means if widget.photoService is null, it uses WalkPhotoService() instead
 
   @override
   Widget build(BuildContext context) {
@@ -36,38 +36,17 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
 
     return Scaffold(
       appBar: AppBar(
+        // these three lines make it so scrolling doesn't change the color of the AppBar
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: Consumer<ProfileProvider>(
         builder: (context, profile, child) {
-          if (profile.isLoading || profile.status == ProfileStatus.initial) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          // check that the profile provider has a valid state to be loaded
+          checkValidProfileState(profile);
 
-          if (profile.status == ProfileStatus.signedOut) {
-            return const Center(
-              child: Text('Please log in to view your walks.'),
-            );
-          }
-
-          if (profile.status == ProfileStatus.error) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(profile.errorMessage ?? 'Could not load your walks.'),
-                  TextButton(
-                    onPressed: profile.refresh,
-                    child: const Text('Try again'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Only show completed walks belonging to this route.
+          // only show completed walks belonging to this route
           final walks =
               profile.walkedRoutes
                   .where((walk) => walk.routeId == widget.routeId)
@@ -78,8 +57,8 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
                   ),
                 );
 
-          // The number of stops is the same for each completed walk
-          // of this route, so use the first walk to get that count.
+          /// The number of stops is the same for each completed walk
+          /// of this route, so use the first walk to get that count.
           final stopCount = walks.isEmpty ? 0 : walks.first.stops.length;
 
           return Column(
@@ -108,6 +87,9 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
               ),
 
               if (walks.isEmpty)
+              /// this should be dead code since the only way to get to this page is to 
+              /// click a route card from the past walks page, which implies that it has
+              /// walks associated with it
                 const Expanded(
                   child: Center(child: Text('No completed walks found.')),
                 )
@@ -133,9 +115,45 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
       ),
     );
   }
+
+  // Checks that the profile provider has a valid state to be loaded
+  // Returns the Center widget to display with the correct error message
+  Center checkValidProfileState(ProfileProvider profile) {
+    // checks if profile is loading or in the initial state
+    if (profile.isLoading || profile.status == ProfileStatus.initial) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    /// should be dead code since to get to this page user must be signed in -
+    /// leaving it in case one day a "guest" mode is added
+    if (profile.status == ProfileStatus.signedOut) {
+      return const Center(child: Text('Please log in to view your walks.'));
+    }
+
+    // checks if loading failed
+    if (profile.status == ProfileStatus.error) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(profile.errorMessage ?? 'Could not load your walks.'),
+            TextButton(
+              onPressed: profile.refresh,
+              child: const Text('Try again'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // default
+    return Center(
+      child: Text('Something went wrong, please reload to try again'),
+    );
+  }
 }
 
-// Displays one completed walk and its associated photo thumbnails.
+// displays one completed walk and its associated photo thumbnails
 class _PastWalkTile extends StatefulWidget {
   const _PastWalkTile({
     required this.walk,
@@ -174,7 +192,7 @@ class _PastWalkTileState extends State<_PastWalkTile> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date heading and number of stops for this individual walk.
+          // Date heading and number of stops for this individual walk
           InkWell(
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(8),
@@ -200,6 +218,7 @@ class _PastWalkTileState extends State<_PastWalkTile> {
           FutureBuilder<List<WalkPhoto>>(
             future: _photos,
             builder: (context, snapshot) {
+              // snapshot - an immutable representation of the most recent List of WalkPhotos
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -207,6 +226,7 @@ class _PastWalkTileState extends State<_PastWalkTile> {
                 );
               }
 
+              // if there's an error loading the photos
               if (snapshot.hasError) {
                 return Card(
                   color: Colors.white,
@@ -239,8 +259,9 @@ class _PastWalkTileState extends State<_PastWalkTile> {
                 );
               }
 
-              final photos = snapshot.data ?? [];
+              final photos = snapshot.data ?? []; //if null, uses an empty list
 
+              //default if no photos
               if (photos.isEmpty) {
                 return Card(
                   color: Colors.white,
@@ -267,6 +288,7 @@ class _PastWalkTileState extends State<_PastWalkTile> {
               // Display a small preview of this walk's photos - displays 4 photos
               final previewPhotos = photos.take(4).toList();
 
+              // a card displaying the photos from a walk, the number of photos, and a "view gallery" indicator
               return Card(
                 color: Colors.white,
                 elevation: 1,
