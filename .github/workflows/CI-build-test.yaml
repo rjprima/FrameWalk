@@ -27,9 +27,12 @@ jobs:
 
       - name: Install Dependencies
         run: flutter pub get
+        working-directory: frame_walk
 
       - name: Test Android build
         run: flutter build apk --release
+        working-directory: frame_walk
 
       - name: Test iOS build
         run: flutter build ios --release --no-codesign
+        working-directory: frame_walk
