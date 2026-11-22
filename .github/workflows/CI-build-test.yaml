@@ -1,0 +1,35 @@
+name: build compilation test
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          cache: true
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Test Android build
+        run: flutter build apk --release
+
+      - name: Test iOS build
+        run: flutter build ios --release --no-codesign
