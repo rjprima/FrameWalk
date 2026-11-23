@@ -8,9 +8,8 @@ import '../utils/photo_picker.dart';
 import '../widgets/walk_photo_thumbnail.dart';
 import 'walk_photo_editor_page.dart';
 
-// Photos for one completed walk, grouped by the prompt they answer, plus a
-// "No prompt" group. A minimal screen for testing the photo backend; all
-// data access goes through WalkPhotoService.
+// Displays photos for one particular completed walk, grouped by prompt. Users can also
+// add photos by clicking a button on this page
 class WalkGalleryPage extends StatefulWidget {
   const WalkGalleryPage({
     super.key,
@@ -38,6 +37,7 @@ class WalkGalleryPage extends StatefulWidget {
 
 class _WalkGalleryPageState extends State<WalkGalleryPage> {
   late final WalkPhotoService _service = widget.service ?? WalkPhotoService();
+
   late Future<WalkPhotoGallery> _gallery;
 
   @override
@@ -48,11 +48,13 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
 
   void _reload() {
     final next = _service.fetchGallery(widget.walkedRouteId);
+
     setState(() {
       _gallery = next;
     });
   }
 
+  // opens the walk photo editor page
   Future<void> _openEditor(WalkPhotoGallery gallery) async {
     await Navigator.push<void>(
       context,
@@ -64,41 +66,73 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
         ),
       ),
     );
-    // Some changes may have saved even if the editor was closed after an
-    // error, so always refresh. That includes the Account page's photo count.
+
+    // Refresh after returning from the editor.
     if (!mounted) return;
+
     _reload();
     context.read<ProfileProvider?>()?.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return FutureBuilder<WalkPhotoGallery>(
       future: _gallery,
       builder: (context, snapshot) {
         final gallery = snapshot.data;
+
+        final date = gallery?.walk.completedAt == null
+            ? 'Walk photos'
+            : MaterialLocalizations.of(context)
+                  .formatMediumDate(gallery!.walk.completedAt!.toLocal());
+
         return Scaffold(
           appBar: AppBar(
-            title: Text(gallery?.walk.routeTitle ?? 'Walk photos'),
+            // these three lines make it so scrolling doesn't change the color of the AppBar
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+            backgroundColor: Theme.of(context).colorScheme.surface,
           ),
           floatingActionButton: gallery == null
               ? null
               : FloatingActionButton.extended(
                   onPressed: () => _openEditor(gallery),
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: Text(
                     gallery.photos.isEmpty ? 'Add photos' : 'Add / edit photos',
+                    style: TextStyle(fontSize: 16)
                   ),
                 ),
-          body: _body(snapshot),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Date heading below the back button.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Text(date, style: theme.textTheme.headlineMedium),
+              ),
+
+              Expanded(child: _body(snapshot)),
+            ],
+          ),
         );
       },
     );
   }
 
+  // creates the body of the page - cards organized by prompt displaying the photos associated with them
   Widget _body(AsyncSnapshot<WalkPhotoGallery> snapshot) {
     if (snapshot.hasError) {
       final error = snapshot.error;
+
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -119,7 +153,9 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
         ),
       );
     }
+
     final gallery = snapshot.data;
+
     if (gallery == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -133,21 +169,24 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
         ),
       _Section(title: 'No prompt', photos: gallery.unassigned),
     ];
+
     return RefreshIndicator(
       onRefresh: () async {
         _reload();
         await _gallery;
       },
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
         itemCount: sections.length,
-        itemBuilder: (context, index) =>
-            _PromptSection(section: sections[index], service: _service),
+        itemBuilder: (context, index) {
+          return _PromptSection(section: sections[index], service: _service);
+        },
       ),
     );
   }
 }
 
+// a section to be used for each indivivdual card
 class _Section {
   final String title;
   final String? subtitle;
@@ -164,37 +203,103 @@ class _PromptSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
     final subtitle = section.subtitle;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${section.title} (${section.photos.length})',
-            style: textTheme.titleMedium,
-          ),
-          if (subtitle != null && subtitle.isNotEmpty)
-            Text(subtitle, style: textTheme.bodyMedium),
-          const SizedBox(height: 8),
-          if (section.photos.isEmpty)
-            Text('No photos yet', style: textTheme.bodySmall)
-          else
-            SizedBox(
-              height: 96,
-              // Horizontal builder, so only visible thumbnails download.
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: section.photos.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) => WalkPhotoThumbnail(
-                  key: ValueKey(section.photos[index].photoId),
-                  photo: section.photos[index],
-                  service: service,
+
+    return Card(
+      color: Colors.white,
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(section.title, style: theme.textTheme.titleLarge),
+
+            if (subtitle != null && subtitle.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(subtitle, style: theme.textTheme.bodySmall),
+            ],
+
+            const SizedBox(height: 12),
+
+            if (section.photos.isEmpty)
+              _EmptyPhotoPlaceholder()
+            else
+              // Horizontally scrolling photos for this prompt.
+              SizedBox(
+                height: 110,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: section.photos.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final photo = section.photos[index];
+
+                    return SizedBox(
+                      width: 110,
+                      height: 110,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: WalkPhotoThumbnail(
+                          key: ValueKey(photo.photoId),
+                          photo: photo,
+                          service: service,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// Placeholder for a route stop with no photos with the same dimensions and shape as a photo thumbnail
+class _EmptyPhotoPlaceholder extends StatelessWidget {
+  const _EmptyPhotoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: 110,
+      height: 110,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.photo_library_outlined,
+            size: 26,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: Text(
+              'No photos yet',
+              textAlign: TextAlign.center,
+              softWrap: true,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
+          ),
         ],
       ),
     );

@@ -1,13 +1,13 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/walked_route.dart';
 import '../../backend/providers/profile_provider.dart';
-import '../screens/walk_gallery_page.dart';
+import '../../models/walked_route.dart';
+import '../screens/route_past_walks_page.dart';
 
-// Displays the signed-in user's completed walks, newest first.
-// Tapping a walk opens its photo gallery.
+/// Displays each unique route the user has completed - if they've done a
+/// route multiple times, it shows up once. Tapping a route opens the history of
+/// walks for that route.
 class CompletedWalksList extends StatelessWidget {
   const CompletedWalksList({super.key});
 
@@ -15,114 +15,191 @@ class CompletedWalksList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ProfileProvider>(
       builder: (context, profile, child) {
+        // check that the profile provider has a valid state to be loaded
+        checkValidProfileState(profile);
 
-        checkValidProfile(profile);
+        /// group completed walks by route ID - means each unique route shows once
+        /// String is the route ID, List<WalkedRoute> is the list of completed walks
+        /// along that route
+        final groupedWalks = <String, List<WalkedRoute>>{};
 
-        final walks = profile.walkedRoutes;
+        /// looping through the walked routes from profile provider. adds the route to the 
+        /// groupedWalks Map if it isn't already there and adds the individual walk to 
+        /// the WalkedRoute list associated with the Map route entry 
+        for (final walk in profile.walkedRoutes) {
+          groupedWalks.putIfAbsent(walk.routeId, () => []).add(walk);
+        }
 
+        // sort individual walks within each route, newest first.
+        for (final walks in groupedWalks.values) {
+          walks.sort(
+            (a, b) => (b.completedAt ?? DateTime(0)).compareTo(
+              a.completedAt ?? DateTime(0),
+            ),
+          );
+        }
+
+        // Sort routes by their most recent completion date.
+        final routes = groupedWalks.entries.toList()
+          ..sort((a, b) { // .. is the cascade operator, allows performing a sequence of operations
+            final aDate = a.value.first.completedAt ?? DateTime(0);
+            final bDate = b.value.first.completedAt ?? DateTime(0);
+            return bDate.compareTo(aDate);
+          });
+
+        // using RefreshIndicator to implement pull-to-refresh functionality
         return RefreshIndicator(
           onRefresh: profile.refresh,
-          child: walks.isEmpty
-              // Keep the list scrollable so pull-to-refresh works.
-              ? ListView(
-                  children: const [
-                    SizedBox(height: 120),
-                    Center(
-                      child: Text('No previous walks yet.'),
-                    ),
-                  ],
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              if (routes.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(child: Text('No previous walks yet.')),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                  ),
-                  itemCount: walks.length,
-                  itemBuilder: (context, index) {
-                    return _WalkTile(
-                      walk: walks[index],
-                      onTap: () async {
-                        await WalkGalleryPage.open(
+              else
+                ...routes.map((entry) { // ... is the spread operator, it allows the elements from routes.map to be inserted directly into the ListView's children list
+                  final walks = entry.value; // the list of walks
+                  final latestWalk = walks.first; // the latest walk, since each walks list was sorted earlier we can just take the first element
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _RouteHistoryCard(
+                      routeTitle: latestWalk.routeTitle,
+                      timesWalked: walks.length,
+                      latestWalk: latestWalk,
+                      onTap: () {
+                        Navigator.push(
                           context,
-                          walks[index].id,
+                          MaterialPageRoute(
+                            builder: (_) => RoutePastWalksPage(
+                              routeId: entry.key,
+                              routeTitle: latestWalk.routeTitle,
+                            ),
+                          ),
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  );
+                }),
+            ],
+          ),
         );
       },
     );
   }
-
-  // Checks if the ProfileProvider is passing in valid information to be displayed
-  Center checkValidProfile(ProfileProvider profile){
-    // Still loading account and walk information.
-        if (profile.isLoading ||
-            profile.status == ProfileStatus.initial) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        // Nobody is signed in.
-        if (profile.status == ProfileStatus.signedOut) {
-          return const Center(
-            child: Text('Please log in to view your walks.'),
-          );
-        }
-
-        // Something went wrong while loading.
-        if (profile.status == ProfileStatus.error) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  profile.errorMessage ??
-                      'Could not load your walks.',
-                ),
-                TextButton(
-                  onPressed: profile.refresh,
-                  child: const Text('Try again'),
-                ),
-              ],
-            ),
-          );
-        }
-      return const Center(child: Text('Something went wrong - reload and try again'));
-  }
 }
 
-class _WalkTile extends StatelessWidget {
-  const _WalkTile({
-    required this.walk,
+// Checks that the profile provider has a valid state to be loaded
+// Returns the Center widget to display with the correct error message
+Center checkValidProfileState(ProfileProvider profile) {
+  // checks if profile is loading or in the initial state
+  if (profile.isLoading || profile.status == ProfileStatus.initial) {
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  /// should be dead code since to get to this page user must be signed in -
+  /// leaving it in case one day a "guest" mode is added
+  if (profile.status == ProfileStatus.signedOut) {
+    return const Center(child: Text('Please log in to view your walks.'));
+  }
+
+  // checks if loading failed
+  if (profile.status == ProfileStatus.error) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(profile.errorMessage ?? 'Could not load your walks.'),
+          TextButton(
+            onPressed: profile.refresh,
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // default 
+  return Center(
+    child: Text('Something went wrong, please reload to try again'),
+  );
+}
+
+// A card to represent a route that has been walked at least once
+class _RouteHistoryCard extends StatelessWidget {
+  const _RouteHistoryCard({
+    required this.routeTitle,
+    required this.timesWalked,
+    required this.latestWalk,
     required this.onTap,
   });
 
-  final WalkedRoute walk;
+  final String routeTitle;
+  final int timesWalked;
+  final WalkedRoute latestWalk;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final date = MaterialLocalizations.of(context)
-        .formatMediumDate(
-          walk.completedAt!.toLocal(),
-        );
+    final theme = Theme.of(context);
 
-    final stops = walk.stops.length;
+    final date = latestWalk.completedAt == null
+        ? 'Date unavailable'
+        : MaterialLocalizations.of(context)
+              .formatMediumDate(latestWalk.completedAt!.toLocal());
 
     return Card(
-      child: ListTile(
-        title: Text(
-          walk.routeTitle.isEmpty ? 'Walk' : walk.routeTitle,
-        ),
-        subtitle: Text(
-          '$date · $stops stop${stops == 1 ? '' : 's'}',
-        ),
-        trailing: const Icon(
-          Icons.photo_library_outlined,
-        ),
+      color: Colors.white,
+      elevation: 1,
+      child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      routeTitle.isEmpty ? 'Walk' : routeTitle,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.access_time, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$timesWalked time${timesWalked == 1 ? '' : 's'}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(width: 12),
+                  const Icon(Icons.place_outlined, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${latestWalk.stops.length} stops',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Last walked: $date',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
