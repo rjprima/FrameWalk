@@ -42,6 +42,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
 
   Future<void> _addPhotos() async {
     final List<PickedPhoto> picked;
+
     try {
       picked = await widget.pickPhotos();
     } on PlatformException catch (error) {
@@ -50,7 +51,9 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       );
       return;
     }
+
     final rejected = <String>[];
+
     setState(() {
       for (final photo in picked) {
         try {
@@ -62,6 +65,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
         }
       }
     });
+
     if (rejected.isNotEmpty) {
       _showMessage('Not added:\n${rejected.join('\n')}');
     }
@@ -81,6 +85,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       _progress = null;
       _errors = const [];
     });
+
     try {
       final result = await widget.service.saveChanges(
         _walkId,
@@ -89,7 +94,9 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
           if (mounted) setState(() => _progress = progress);
         },
       );
+
       if (!mounted) return;
+
       setState(() {
         _saving = false;
         _saved = result.photos;
@@ -97,6 +104,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
         _changes = result.remaining;
         _errors = result.errors;
       });
+
       if (result.isComplete) {
         _showMessage('Photos saved');
         Navigator.pop(context);
@@ -105,6 +113,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       }
     } on PhotoFailure catch (failure) {
       if (!mounted) return;
+
       setState(() {
         _saving = false;
         _errors = [
@@ -115,6 +124,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
           ),
         ];
       });
+
       _showMessage(failure.message);
     }
   }
@@ -136,6 +146,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
         ],
       ),
     );
+
     if (discard == true && mounted) Navigator.pop(context);
   }
 
@@ -161,16 +172,20 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     final visibleSaved = _saved
         .where((photo) => !_changes.deletions.contains(photo.photoId))
         .toList();
+
     final additions = _changes.additions;
+
     final rows = <Widget>[
       for (final photo in additions)
         _PhotoRow(
           key: ValueKey(photo.photoId),
           thumbnail: PhotoBytesThumbnail(bytes: photo.bytes, size: 72),
-          label: 'New${photo.fileName == null ? '' : ' · ${photo.fileName}'}',
+          label: 'New photo',
           stopId: photo.stopId,
           prompts: widget.gallery.prompts,
           error: _errorFor(photo.photoId),
@@ -197,6 +212,7 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
           onRemove: () => _remove(photo.photoId),
         ),
     ];
+
     final generalErrors = _errors.where((e) => e.photoId == null).toList();
     final pendingDeletes = _changes.deletions.length;
 
@@ -207,20 +223,54 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Edit photos'),
-          actions: [
-            IconButton(
-              tooltip: 'Add photos',
-              onPressed: _saving ? null : _addPhotos,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-            ),
-          ],
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: theme.colorScheme.surface,
         ),
         body: Column(
           children: [
+            // Page title and Save button below the back button.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Edit Photos',
+                      style: theme.textTheme.headlineMedium,
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _saving || _changes.isEmpty ? null : _save,
+                    icon: const Icon(Icons.check, size: 22),
+                    label: Text(
+                      _saving
+                          ? 'Saving...'
+                          : _errors.isNotEmpty && !_changes.isEmpty
+                          ? 'Retry'
+                          : 'Save',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(140, 42),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             if (_saving) _ProgressBanner(progress: _progress),
+
             for (final error in generalErrors)
               _ErrorBanner(message: error.message),
+
             if (pendingDeletes > 0)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -230,15 +280,10 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
                   'Your device photos are not affected.',
                 ),
               ),
+
             Expanded(
               child: rows.isEmpty
-                  ? Center(
-                      child: TextButton.icon(
-                        onPressed: _saving ? null : _addPhotos,
-                        icon: const Icon(Icons.add_photo_alternate_outlined),
-                        label: const Text('Add photos'),
-                      ),
-                    )
+                  ? const SizedBox.shrink()
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: rows.length,
@@ -248,17 +293,27 @@ class _WalkPhotoEditorPageState extends State<WalkPhotoEditorPage> {
             ),
           ],
         ),
+
+        // Add photos button at the bottom of the page.
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: FilledButton(
-              onPressed: _saving || _changes.isEmpty ? null : _save,
-              child: Text(
-                _saving
-                    ? 'Saving...'
-                    : _errors.isNotEmpty && !_changes.isEmpty
-                    ? 'Retry failed changes (${_changes.changeCount})'
-                    : 'Save',
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _saving ? null : _addPhotos,
+                icon: const Icon(Icons.add, size: 26),
+                label: const Text('Add photos', style: TextStyle(fontSize: 16)),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ),
           ),
@@ -293,6 +348,7 @@ class _PhotoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final error = this.error;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -305,6 +361,9 @@ class _PhotoRow extends StatelessWidget {
               Text(label, style: Theme.of(context).textTheme.labelMedium),
               DropdownButton<String>(
                 isExpanded: true,
+                // Allow menu items to grow vertically to fit their text.
+                itemHeight: null,
+                dropdownColor: Colors.white,
                 value: stopId ?? _noPrompt,
                 onChanged: enabled
                     ? (value) => onStopChanged(
@@ -319,11 +378,16 @@ class _PhotoRow extends StatelessWidget {
                   for (final prompt in prompts)
                     DropdownMenuItem(
                       value: prompt.stopId,
-                      child: Text(
-                        prompt.prompt.isEmpty
-                            ? prompt.stopName
-                            : '${prompt.stopName}: ${prompt.prompt}',
-                        overflow: TextOverflow.ellipsis,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          prompt.prompt.isEmpty
+                              ? prompt.stopName
+                              : '${prompt.stopName}: ${prompt.prompt}',
+                          softWrap: true,
+                          maxLines: null,
+                          overflow: TextOverflow.visible,
+                        ),
                       ),
                     ),
                 ],
@@ -354,6 +418,7 @@ class _ProgressBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = this.progress;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
@@ -381,6 +446,7 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
