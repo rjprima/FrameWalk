@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -24,10 +23,7 @@ class AccountPage extends StatelessWidget {
             // Page header: matches HomePage positioning.
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Text(
-                'FrameWalk',
-                style: theme.textTheme.headlineMedium,
-              ),
+              child: Text('FrameWalk', style: theme.textTheme.headlineMedium),
             ),
 
             // Remaining account content.
@@ -39,38 +35,10 @@ class AccountPage extends StatelessWidget {
                   const SizedBox(height: 10),
 
                   // Profile information.
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: const Color(0xFFE2E9DF),
-                        radius: 27,
-                        child: const Icon(
-                          Icons.person_outline,
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              profile.username ?? 'Username',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Email: ${profile.email ?? ''}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  _buildProfileInfo(
+                    profile.username ?? "Username",
+                    profile.email ?? '',
+                    theme,
                   ),
 
                   const SizedBox(height: 40),
@@ -79,7 +47,8 @@ class AccountPage extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _StatCard(
+                        child: _buildStatCard(
+                          context,
                           icon: Icons.photo_outlined,
                           label: 'Photos',
                           value: profile.photosUploaded,
@@ -87,7 +56,8 @@ class AccountPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _StatCard(
+                        child: _buildStatCard(
+                          context,
                           icon: Icons.map_outlined,
                           label: 'Routes',
                           value: profile.routesCompleted,
@@ -102,8 +72,7 @@ class AccountPage extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () =>
-                          (authService ?? AuthService()).logOut(),
+                      onPressed: () => (authService ?? AuthService()).logOut(),
                       icon: const Icon(Icons.logout, size: 18),
                       label: const Text(
                         'Log Out',
@@ -119,22 +88,47 @@ class AccountPage extends StatelessWidget {
       ),
     );
   }
-}
 
-// Displays one account statistic.
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  Widget _buildProfileInfo(String username, String email, ThemeData theme) {
+    // Account statistics.
+    return Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: const Color(0xFFE2E9DF),
+          radius: 27,
+          child: const Icon(Icons.person_outline, size: 32),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                username,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Email: $email',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-  final IconData icon;
-  final String label;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildStatCard(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required int value,
+  }) {
     final theme = Theme.of(context);
 
     return Container(
@@ -151,9 +145,7 @@ class _StatCard extends StatelessWidget {
             children: [
               Icon(icon, size: 24),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(label, style: theme.textTheme.labelMedium),
-              ),
+              Expanded(child: Text(label, style: theme.textTheme.labelMedium)),
             ],
           ),
           const SizedBox(height: 8),
