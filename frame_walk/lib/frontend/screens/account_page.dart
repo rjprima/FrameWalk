@@ -4,29 +4,30 @@ import 'package:provider/provider.dart';
 import '../../backend/providers/profile_provider.dart';
 import '../../backend/services/auth_service.dart';
 
+// the account page, displaying the user's information and statistics and a button to log out
 class AccountPage extends StatelessWidget {
-  final AuthService? authService;
+  final AuthService? authService; // the auth service to handle logging out
 
   const AccountPage({super.key, this.authService});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final profile = context.watch<ProfileProvider>();
+    final theme = Theme.of(context); // gets the theme of this BuildContext
+    final profile = context.watch<ProfileProvider>(); // only watching the provider because only need to keep up with changes, not make any
 
-    return SafeArea(
+    return SafeArea( // avoids OS interfaces, like the island on iphones
       child: SingleChildScrollView(
         padding: EdgeInsets.zero,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start, // left align everything
           children: [
-            // Page header: matches HomePage positioning.
+            // Page header
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: Text('FrameWalk', style: theme.textTheme.headlineMedium),
             ),
 
-            // Remaining account content.
+            // Remaining account content
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               child: Column(
@@ -43,7 +44,7 @@ class AccountPage extends StatelessWidget {
 
                   const SizedBox(height: 40),
 
-                  // Account statistics.
+                  // Account statistics
                   Row(
                     children: [
                       Expanded(
@@ -89,12 +90,14 @@ class AccountPage extends StatelessWidget {
     );
   }
 
+  /// builds the profile info at the top of the page
+  /// displays a placeholder circular avatar, the user's username, and user's email
   Widget _buildProfileInfo(String username, String email, ThemeData theme) {
-    // Account statistics.
     return Row(
       children: [
+        // placeholder avatar
         CircleAvatar(
-          backgroundColor: const Color(0xFFE2E9DF),
+          backgroundColor: const Color(0xFFE2E9DF), // TODO: add this light green to app theme, it's used in activty page and route filter chips too
           radius: 27,
           child: const Icon(Icons.person_outline, size: 32),
         ),
@@ -123,6 +126,7 @@ class AccountPage extends StatelessWidget {
     );
   }
 
+  // builds a card displaying an account statistic
   Widget _buildStatCard(
     BuildContext context, {
     required IconData icon,
