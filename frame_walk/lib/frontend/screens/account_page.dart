@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,88 +17,101 @@ class AccountPage extends StatelessWidget {
 
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page header.
-            Text(
-              'FrameWalk',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+            // Page header: matches HomePage positioning.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Text(
+                'FrameWalk',
+                style: theme.textTheme.headlineMedium,
               ),
             ),
 
-            const SizedBox(height: 40),
+            // Remaining account content.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
 
-            // Profile information.
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 27,
-                  backgroundColor: theme.colorScheme.primaryContainer,
-                  child: Icon(
-                    Icons.person_outline,
-                    size: 32,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Profile information.
+                  Row(
                     children: [
-                      Text(
-                        profile.username ?? 'Username',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
+                      CircleAvatar(
+                        backgroundColor: const Color(0xFFE2E9DF),
+                        radius: 27,
+                        child: const Icon(
+                          Icons.person_outline,
+                          size: 32,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Email: ${profile.email ?? ''}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              profile.username ?? 'Username',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Email: ${profile.email ?? ''}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
 
-            const SizedBox(height: 40),
+                  const SizedBox(height: 40),
 
-            // Account statistics.
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.photo_outlined,
-                    label: 'Photos',
-                    value: profile.photosUploaded,
+                  // Account statistics.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.photo_outlined,
+                          label: 'Photos',
+                          value: profile.photosUploaded,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StatCard(
+                          icon: Icons.map_outlined,
+                          label: 'Routes',
+                          value: profile.routesCompleted,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    icon: Icons.map_outlined,
-                    label: 'Routes',
-                    value: profile.routesCompleted,
+
+                  const SizedBox(height: 44),
+
+                  // Log out button.
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          (authService ?? AuthService()).logOut(),
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text(
+                        'Log Out',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 44),
-
-            // Log out button.
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => (authService ?? AuthService()).logOut(),
-                icon: const Icon(Icons.logout, size: 18),
-                label: const Text('Log Out', style: TextStyle(fontSize: 16)),
+                ],
               ),
             ),
           ],
@@ -137,7 +151,9 @@ class _StatCard extends StatelessWidget {
             children: [
               Icon(icon, size: 24),
               const SizedBox(width: 8),
-              Expanded(child: Text(label, style: theme.textTheme.labelMedium)),
+              Expanded(
+                child: Text(label, style: theme.textTheme.labelMedium),
+              ),
             ],
           ),
           const SizedBox(height: 8),
