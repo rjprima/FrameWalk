@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -24,6 +25,51 @@ abstract class StopNotificationService {
     required String walkId,
     required WalkedStop stop,
   });
+}
+
+// What a stop notification carries, so a tap can open that walk even after
+// FrameWalk was closed: the IDs are all that's needed to load it from
+// Firestore. Stored as JSON in the notification's payload string.
+class StopNotificationPayload {
+  final String walkedRouteId;
+  final String stopId;
+
+  const StopNotificationPayload({
+    required this.walkedRouteId,
+    required this.stopId,
+  });
+
+  String encode() => jsonEncode({
+        'walkedRouteId': walkedRouteId,
+        'stopId': stopId,
+      });
+
+  // Null for anything that isn't a payload FrameWalk wrote, such as a
+  // notification from an older version of the app.
+  static StopNotificationPayload? decode(String? payload) {
+    if (payload == null || payload.isEmpty) return null;
+    try {
+      final map = jsonDecode(payload);
+      if (map is! Map) return null;
+      final walkId = map['walkedRouteId'];
+      final stopId = map['stopId'];
+      if (walkId is! String || walkId.isEmpty || stopId is! String) {
+        return null;
+      }
+      return StopNotificationPayload(walkedRouteId: walkId, stopId: stopId);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is StopNotificationPayload &&
+      other.walkedRouteId == walkedRouteId &&
+      other.stopId == stopId;
+
+  @override
+  int get hashCode => Object.hash(walkedRouteId, stopId);
 }
 
 const String stopReachedTitle = "You've reached your next stop!";
@@ -105,15 +151,25 @@ class LocalStopNotificationService implements StopNotificationService {
   static const _androidIcon = 'ic_stat_framewalk';
 
   final FlutterLocalNotificationsPlugin _plugin;
-  Future<bool>? _initialized;
+
+  // The plugin is one per app and keeps the tap callback from its latest
+  // initialize call, so initialization is shared by every instance and
+  // happens once. Otherwise a later call without the callback would quietly
+  // stop taps from being handled.
+  static Future<bool>? _initialized;
 
   LocalStopNotificationService({FlutterLocalNotificationsPlugin? plugin})
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
-  // Set up on first use rather than at launch. The permission flags are off
-  // so iOS doesn't prompt the moment FrameWalk opens; requestPermission asks
-  // when a walk starts, when the reason is obvious.
-  Future<bool> _ensureInitialized() {
+  // Call once at launch (main.dart) so taps are handled. [onTap] receives
+  // the payload of a tapped notification while FrameWalk is running, in the
+  // foreground or background. A tap that launches FrameWalk from closed
+  // isn't reported here; see [launchPayload].
+  //
+  // The permission flags are off so iOS doesn't prompt the moment FrameWalk
+  // opens; requestPermission asks when a walk starts, when the reason is
+  // obvious.
+  Future<bool> initialize({void Function(String? payload)? onTap}) {
     return _initialized ??= () async {
       try {
         return await _plugin.initialize(
@@ -125,6 +181,9 @@ class LocalStopNotificationService implements StopNotificationService {
                   requestSoundPermission: false,
                 ),
               ),
+              onDidReceiveNotificationResponse: onTap == null
+                  ? null
+                  : (response) => onTap(response.payload),
             ) ??
             false;
       } catch (error) {
@@ -134,6 +193,21 @@ class LocalStopNotificationService implements StopNotificationService {
       }
     }();
   }
+
+  // The payload of the notification whose tap launched FrameWalk from
+  // closed, or null if it was launched some other way.
+  Future<String?> launchPayload() async {
+    try {
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      if (details == null || !details.didNotificationLaunchApp) return null;
+      return details.notificationResponse?.payload;
+    } catch (error) {
+      debugPrint('FrameWalk: could not read launch notification: $error');
+      return null;
+    }
+  }
+
+  Future<bool> _ensureInitialized() => initialize();
 
   @override
   Future<bool> requestPermission() async {
@@ -172,6 +246,10 @@ class LocalStopNotificationService implements StopNotificationService {
         id: stopNotificationId(walkId, stop.stopId),
         title: stopReachedTitle,
         body: body,
+        payload: StopNotificationPayload(
+          walkedRouteId: walkId,
+          stopId: stop.stopId,
+        ).encode(),
         notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,

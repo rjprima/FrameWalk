@@ -623,6 +623,135 @@ void main() {
     });
   });
 
+  group('resuming a saved walk', () {
+    // Records part of a walk, then throws the service away, as when the OS
+    // ends FrameWalk. Only Firestore remembers the walk.
+    Future<String> walkThenTerminate() async {
+      await start();
+      walkTo(47.6559, -122.3078); // Reaches Red Square.
+      await pumpEventQueue();
+      walkTo(47.6559 + step, -122.3078);
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+      await pumpEventQueue();
+      final walkId = service.walk!.id;
+      service.dispose();
+      service = buildService();
+      return walkId;
+    }
+
+    test('restores progress and recorded points from storage', () async {
+      final walkId = await walkThenTerminate();
+      final distanceBefore = (await repository.fetchWalk(userId, walkId))!
+          .distanceMeters;
+
+      final readiness = await service.resumeWalk(
+        userId: userId,
+        walkId: walkId,
+      );
+
+      expect(readiness, LocationReadiness.ready);
+      expect(service.phase, WalkPhase.active);
+      expect(service.walk!.id, walkId);
+      expect(service.progress!.reachedCount, 1);
+      expect(service.progress!.nextStop!.stopId, 'red_stop_2');
+      expect(service.recordedPoints, hasLength(2));
+      expect(service.walk!.distanceMeters, distanceBefore);
+      expect(location.isStreaming, isTrue);
+    });
+
+    test('carries on numbering points instead of overwriting', () async {
+      final walkId = await walkThenTerminate();
+      await service.resumeWalk(userId: userId, walkId: walkId);
+
+      walkTo(47.6559 + 2 * step, -122.3078);
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+      await pumpEventQueue();
+
+      final points = await savedPoints();
+      expect(points, hasLength(3));
+      expect(points.map((p) => p['sequence']).toSet(), {0, 1, 2});
+      expect((await savedWalk())!.locationPointCount, 3);
+    });
+
+    test('does not report a stop reached before it again', () async {
+      final walkId = await walkThenTerminate();
+      await service.resumeWalk(userId: userId, walkId: walkId);
+      final events = <StopEvent>[];
+      final sub = service.stopEvents.listen(events.add);
+
+      walkTo(47.6559, -122.3078);
+      await pumpEventQueue();
+
+      expect(events, isEmpty);
+      await sub.cancel();
+    });
+
+    test('does not count time closed as distance walked', () async {
+      final walkId = await walkThenTerminate();
+      await service.resumeWalk(userId: userId, walkId: walkId);
+      final before = service.walk!.distanceMeters;
+
+      // 200 m away, 20 minutes later.
+      now = now.add(const Duration(minutes: 20));
+      location.emit(sampleAt(47.6559 + 200 / 111195, -122.3078, now));
+      await pumpEventQueue();
+
+      expect(service.walk!.distanceMeters, before);
+    });
+
+    test('refuses a walk that was already finished', () async {
+      await start();
+      final walkId = service.walk!.id;
+      await service.completeWalk();
+      service.dispose();
+      service = buildService();
+
+      expect(
+        await service.resumeWalk(userId: userId, walkId: walkId),
+        isNull,
+      );
+      expect(service.phase, WalkPhase.failed);
+      expect(service.errorMessage, contains('already finished'));
+      expect(location.isStreaming, isFalse);
+    });
+
+    test('reports a walk that no longer exists', () async {
+      expect(
+        await service.resumeWalk(userId: userId, walkId: 'deleted-walk'),
+        isNull,
+      );
+      expect(service.phase, WalkPhase.failed);
+      expect(service.errorMessage, contains('no longer available'));
+    });
+
+    test('needs location access, like a new walk', () async {
+      final walkId = await walkThenTerminate();
+      location.permission = LocationPermissionStatus.denied;
+      location.answerToRequest = LocationPermissionStatus.denied;
+
+      expect(
+        await service.resumeWalk(userId: userId, walkId: walkId),
+        LocationReadiness.denied,
+      );
+      expect(service.phase, WalkPhase.blocked);
+      expect(location.isStreaming, isFalse);
+    });
+
+    test('passes the route line for the walk\'s route', () async {
+      final walkId = await walkThenTerminate();
+      String? askedFor;
+      await service.resumeWalk(
+        userId: userId,
+        walkId: walkId,
+        routePathFor: (routeId) {
+          askedFor = routeId;
+          return const [];
+        },
+      );
+      expect(askedFor, '1');
+    });
+  });
+
   group('completion and cancellation', () {
     test('completing stops tracking and saves the Walked-Route', () async {
       await start();

@@ -14,7 +14,9 @@ import '../../backend/services/stop_notification_service.dart';
 import '../../backend/services/walk_repository.dart';
 import '../../backend/services/walk_tracking_service.dart';
 import '../../models/location_point.dart';
+import '../../models/mock_route_data.dart';
 import '../../models/route_stop.dart';
+import '../../models/walked_route.dart';
 
 // iOS apps can't open the device-wide Location Services switch directly; the
 // settings button opens FrameWalk's own Settings page instead, so iOS users
@@ -23,23 +25,54 @@ bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 const _iosLocationServicesPath =
     'Settings > Privacy & Security > Location Services';
 
+// The walk screen currently open, if any. A notification tap uses it to show
+// a stop on the screen that's already there rather than opening a second one.
+abstract class OpenWalkScreen {
+  // Null while a new walk is still being created.
+  String? get walkId;
+
+  void showStop(String stopId);
+}
+
 // Records the user's walk along [route]. Tracking carries on while the phone
 // is locked or FrameWalk is in the background (see WalkTrackingService).
 class ActiveWalkPage extends StatefulWidget {
+  // Starts a new walk of [route].
   const ActiveWalkPage({
     super.key,
-    required this.route,
+    required WalkingRoute this.route,
     required this.stops,
     required this.routePoints,
     this.trackingService,
     this.stopNotifications,
     this.userId,
     this.showMap = true,
-  });
+  })  : resumeWalkId = null,
+        focusStopId = null;
 
-  final WalkingRoute route;
+  // Reopens walk [resumeWalkId], loading it from Firestore, and carries on
+  // tracking it. Used when a stop notification is tapped. [focusStopId] is
+  // the stop to show once the walk has loaded.
+  const ActiveWalkPage.resume({
+    super.key,
+    required String this.resumeWalkId,
+    this.focusStopId,
+    this.trackingService,
+    this.stopNotifications,
+    this.userId,
+    this.showMap = true,
+  })  : route = null,
+        stops = const [],
+        routePoints = const [];
+
+  // The open walk screen, or null if there isn't one.
+  static OpenWalkScreen? get openScreen => _ActiveWalkPageState._open;
+
+  final WalkingRoute? route;
   final List<RouteStop> stops;
   final List<LatLng> routePoints;
+  final String? resumeWalkId;
+  final String? focusStopId;
 
   // Injected by tests. Defaults to GPS and Firestore.
   final WalkTrackingService? trackingService;
@@ -58,7 +91,10 @@ class ActiveWalkPage extends StatefulWidget {
 }
 
 class _ActiveWalkPageState extends State<ActiveWalkPage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver
+    implements OpenWalkScreen {
+  static _ActiveWalkPageState? _open;
+
   late final WalkTrackingService _service;
   late final bool _ownsService;
   late final StopNotificationService _notifications;
@@ -66,6 +102,16 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   bool _askedForNotifications = false;
   StreamSubscription<StopEvent>? _stopEventsSub;
   Timer? _clock;
+  late List<LatLng> _routePoints = widget.routePoints;
+  late String? _focusedStopId = widget.focusStopId;
+
+  @override
+  String? get walkId => _service.walk?.id ?? widget.resumeWalkId;
+
+  @override
+  void showStop(String stopId) {
+    if (mounted) setState(() => _focusedStopId = stopId);
+  }
 
   @override
   void initState() {
@@ -91,11 +137,13 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     _clock = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) setState(() {});
     });
+    _open = this;
     _start();
   }
 
   @override
   void dispose() {
+    if (identical(_open, this)) _open = null;
     WidgetsBinding.instance.removeObserver(this);
     _clock?.cancel();
     _stopEventsSub?.cancel();
@@ -118,6 +166,16 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   Future<void> _start() async {
     final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
+    final resumeWalkId = widget.resumeWalkId;
+    if (resumeWalkId != null) {
+      // Notification permission was settled when the walk first started.
+      await _service.resumeWalk(
+        userId: userId,
+        walkId: resumeWalkId,
+        routePathFor: _loadRoutePath,
+      );
+      return;
+    }
     // Asked before tracking starts so Android's "recording your walk"
     // notification is visible from the beginning. Only once per walk: on
     // Android, asking again after a "no" would prompt again. A "no" doesn't
@@ -129,13 +187,22 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     }
     await _service.startWalk(
       userId: userId,
-      routeId: widget.route.id,
-      routeTitle: widget.route.name,
+      routeId: widget.route!.id,
+      routeTitle: widget.route!.name,
       stops: widget.stops,
-      routePath: widget.routePoints
+      routePath: _routePoints
           .map((p) => GeoCoordinate(p.latitude, p.longitude))
           .toList(),
     );
+  }
+
+  // The route line for a resumed walk, which only knows its routeId.
+  // TODO: replace MockRouteData with real geometry lookups, as in
+  // RouteInfoPage, which opens new walks.
+  List<GeoCoordinate> _loadRoutePath(String routeId) {
+    final points = MockRouteData.getRoutePoints(routeId);
+    if (mounted) setState(() => _routePoints = points);
+    return points.map((p) => GeoCoordinate(p.latitude, p.longitude)).toList();
   }
 
   void _onStopEvent(StopEvent event) {
@@ -194,7 +261,11 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
         if (!didPop && phase == WalkPhase.active) _confirmCancel();
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(widget.route.name)),
+        appBar: AppBar(
+          title: Text(
+            widget.route?.name ?? _service.walk?.routeTitle ?? 'Your walk',
+          ),
+        ),
         body: SafeArea(child: _buildBody(context)),
       ),
     );
@@ -289,9 +360,19 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     final elapsed = DateTime.now().difference(walk.startedAt);
     final finishing = _service.phase == WalkPhase.finishing;
 
+    WalkedStop? focused;
+    for (final stop in progress.stops) {
+      if (stop.stopId == _focusedStopId) focused = stop;
+    }
+
     return Column(
       children: [
         _SignalBanner(service: _service),
+        if (focused != null)
+          _FocusedStopCard(
+            stop: focused,
+            onClose: () => setState(() => _focusedStopId = null),
+          ),
         if (widget.showMap) Expanded(child: _buildMap(context)),
         Padding(
           padding: const EdgeInsets.all(16),
@@ -341,8 +422,8 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
         .toList();
     return GoogleMap(
       initialCameraPosition: CameraPosition(
-        target: widget.routePoints.isNotEmpty
-            ? widget.routePoints.first
+        target: _routePoints.isNotEmpty
+            ? _routePoints.first
             : const LatLng(47.6553, -122.3035),
         zoom: 16,
       ),
@@ -365,10 +446,10 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
           ),
       },
       polylines: {
-        if (widget.routePoints.isNotEmpty)
+        if (_routePoints.isNotEmpty)
           Polyline(
             polylineId: const PolylineId('route'),
-            points: widget.routePoints,
+            points: _routePoints,
             color: color.withValues(alpha: 0.4),
             width: 5,
           ),
@@ -446,6 +527,38 @@ class _SignalBanner extends StatelessWidget {
         else
           const SizedBox.shrink(),
       ],
+    );
+  }
+}
+
+// The stop a tapped notification was about, with its photography prompt.
+class _FocusedStopCard extends StatelessWidget {
+  const _FocusedStopCard({required this.stop, required this.onClose});
+
+  final WalkedStop stop;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final reached = stop.reachedAt != null;
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: ListTile(
+        leading: Icon(
+          reached ? Icons.photo_camera : Icons.place_outlined,
+          color: theme.colorScheme.primary,
+        ),
+        title: Text(reached ? 'You reached ${stop.stopName}' : stop.stopName),
+        subtitle: Text(
+          stop.prompt.isEmpty ? 'Take a photo here.' : stop.prompt,
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: 'Dismiss',
+          onPressed: onClose,
+        ),
+      ),
     );
   }
 }

@@ -605,6 +605,7 @@ When a stop is reached while the phone is locked or FrameWalk is in the backgrou
 - **Permission** is asked once, when a walk starts. Saying no doesn't block the walk. Re-enable it in Settings > FrameWalk > Notifications.
 - **Duplicates:** each stop is reached once (`RouteProgressTracker`) and notified once per walk. Its notification ID is derived from the walk and stop, so a repeat would replace rather than stack.
 - **Android setup** required by the plugin: core-library desugaring and `compileSdk` 37 in `android/app/build.gradle.kts`, and AGP 9.1.1+ in `android/settings.gradle.kts`. `android/app/src/main/res/raw/keep.xml` stops release builds from removing the notification icon, which Dart only refers to by name.
+- **Tapping a notification** opens the walk screen with a card showing that stop and its prompt (`lib/frontend/navigation/stop_notification_router.dart`). The payload holds only `walkedRouteId` and `stopId`. If the walk screen is already open, the stop is shown there. Otherwise the walk is loaded from Firestore (`WalkTrackingService.resumeWalk`) and tracking carries on, numbering new points after the saved ones. This works the same after FrameWalk was closed, once Firebase has restored the signed-in user. A walk that has since finished or been deleted shows a message instead.
 - **iOS setup:** `AppDelegate.swift` sets the notification-centre delegate. No capability or `Info.plist` change is needed for local notifications. The Push Notifications capability is only for remote push.
 
 ## Walk Photos

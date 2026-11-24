@@ -90,6 +90,8 @@ class WalkedRoute {
 
   bool get isCompleted => status == WalkStatus.completed;
 
+  bool get isActive => status == WalkStatus.active;
+
   Duration? get duration => completedAt?.difference(startedAt);
 
   List<String> get stopIds => stops.map((stop) => stop.stopId).toList();

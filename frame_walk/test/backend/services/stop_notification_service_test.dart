@@ -51,6 +51,26 @@ void main() {
     });
   });
 
+  group('notification payload', () {
+    test('round-trips the walked route and stop IDs', () {
+      const payload = StopNotificationPayload(
+        walkedRouteId: 'walk-1',
+        stopId: 'red_stop_1',
+      );
+      final encoded = payload.encode();
+      expect(encoded, contains('"walkedRouteId":"walk-1"'));
+      expect(encoded, contains('"stopId":"red_stop_1"'));
+      expect(StopNotificationPayload.decode(encoded), payload);
+    });
+
+    test('ignores payloads FrameWalk did not write', () {
+      for (final raw in [null, '', 'hello', '[]', '{"stopId":"a"}',
+          '{"walkedRouteId":"","stopId":"a"}', '{"walkedRouteId":1}']) {
+        expect(StopNotificationPayload.decode(raw), isNull, reason: '$raw');
+      }
+    });
+  });
+
   group('notification IDs', () {
     test('are stable, positive, and differ per walk and stop', () {
       final id = stopNotificationId('walk-1', 'stop-1');

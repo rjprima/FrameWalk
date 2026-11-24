@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
@@ -137,6 +138,7 @@ class WalkTrackingService extends ChangeNotifier {
   RouteProgressTracker? _progress;
   final List<LocationPoint> _points = [];
   final List<LocationPoint> _pending = [];
+  int _nextSequence = 0;
   LocationSample? _lastAccepted;
   DateTime? _lastFixReceivedAt;
   DateTime _lastFlushAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -217,7 +219,81 @@ class WalkTrackingService extends ChangeNotifier {
     }
     if (_disposed) return readiness;
 
+    _beginTracking(walk, routePath: routePath);
+    return readiness;
+  }
+
+  // Picks up a walk that is still active in Firestore, for example after
+  // FrameWalk was closed or the OS ended it and the user tapped a stop
+  // notification. Nothing in memory is needed: the walk, its reached stops,
+  // and its recorded points are all loaded from storage (Firestore's
+  // on-device cache when offline).
+  //
+  // [routePathFor] gives the route line for the walk's routeId once it's
+  // known. Readiness is null when the walk couldn't be loaded or has already
+  // ended; the phase is then [WalkPhase.failed] with an [errorMessage].
+  Future<LocationReadiness?> resumeWalk({
+    required String userId,
+    required String walkId,
+    List<GeoCoordinate> Function(String routeId)? routePathFor,
+  }) async {
+    if (_phase == WalkPhase.starting ||
+        _phase == WalkPhase.active ||
+        _phase == WalkPhase.finishing) {
+      throw StateError('A walk is already in progress');
+    }
+    _errorMessage = null;
+    _setPhase(WalkPhase.starting);
+
+    final WalkedRoute? walk;
+    final List<LocationPoint> points;
+    try {
+      walk = await _walkRepository.fetchWalk(userId, walkId);
+      points = walk == null || !walk.isActive
+          ? const []
+          : await _walkRepository.fetchLocationPoints(userId, walkId);
+    } catch (error) {
+      if (_disposed) return null;
+      _errorMessage = "Couldn't load your walk. Check your connection.";
+      _setPhase(WalkPhase.failed);
+      return null;
+    }
+    if (_disposed) return null;
+    if (walk == null || !walk.isActive) {
+      // Shown in place of the walk, so the stale notification still leads
+      // somewhere sensible.
+      _walk = walk;
+      _errorMessage = walk == null
+          ? 'This walk is no longer available.'
+          : 'This walk is already finished. You can find it in Activity.';
+      _setPhase(WalkPhase.failed);
+      return null;
+    }
+
+    final readiness = await checkLocationReadiness(_source);
+    _readiness = readiness;
+    if (_disposed) return readiness;
+    if (readiness != LocationReadiness.ready) {
+      _setPhase(WalkPhase.blocked);
+      return readiness;
+    }
+
+    _beginTracking(
+      walk,
+      routePath: routePathFor?.call(walk.routeId) ?? const [],
+      restoredPoints: points,
+    );
+    return readiness;
+  }
+
+  void _beginTracking(
+    WalkedRoute walk, {
+    required List<GeoCoordinate> routePath,
+    List<LocationPoint> restoredPoints = const [],
+  }) {
     _walk = walk;
+    // Stops already reached (reachedAt set) stay reached, so they can't be
+    // reached or notified about again.
     _progress = RouteProgressTracker(
       stops: walk.stops,
       routePath: routePath,
@@ -228,8 +304,19 @@ class WalkTrackingService extends ChangeNotifier {
       maxPlausibleSpeedMetersPerSecond: config.maxPlausibleSpeedMetersPerSecond,
       stopOrder: config.stopOrder,
     );
-    _points.clear();
+    _points
+      ..clear()
+      ..addAll(restoredPoints);
+    // Point IDs come from their sequence number, so a resumed walk must carry
+    // on numbering after the saved points or it would overwrite them. The
+    // walk's count covers points saved but not loaded (e.g. a stale cache).
+    _nextSequence = math.max(
+      walk.locationPointCount,
+      restoredPoints.isEmpty ? 0 : restoredPoints.last.sequence + 1,
+    );
     _pending.clear();
+    // No previous reading: time spent with FrameWalk closed isn't counted as
+    // distance walked.
     _lastAccepted = null;
     _lastFixReceivedAt = null;
     _lastFlushAt = _now();
@@ -247,7 +334,6 @@ class WalkTrackingService extends ChangeNotifier {
       (_) => runHousekeeping(),
     );
     _notify();
-    return readiness;
   }
 
   // Stops tracking, saves the remaining points, and marks the walk
@@ -442,13 +528,13 @@ class WalkTrackingService extends ChangeNotifier {
     }
     _lastAccepted = sample;
 
-    final point = LocationPoint.fromSample(_points.length, sample);
+    final point = LocationPoint.fromSample(_nextSequence++, sample);
     _points.add(point);
     _pending.add(point);
 
     walk = walk.copyWith(
       distanceMeters: distance,
-      locationPointCount: _points.length,
+      locationPointCount: _nextSequence,
       lastLocationAt: sample.recordedAt,
     );
     final events = _progress!.update(sample);
