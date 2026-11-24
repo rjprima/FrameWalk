@@ -28,6 +28,7 @@ dev_dependencies:
   mock_exceptions: ^0.8.2
   integration_test:
     sdk: flutter
+  xml: ^7.1.0
 
 flutter:
   uses-material-design: true
