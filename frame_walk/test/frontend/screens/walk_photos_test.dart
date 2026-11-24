@@ -1,4 +1,3 @@
-
 import 'dart:typed_data';
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -265,10 +264,7 @@ void main() {
         expect(saveButton.onPressed, isNull);
 
         // Add photos is displayed as a button at the bottom.
-        final addPhotosFinder = find.widgetWithText(
-          FilledButton,
-          'Add photos',
-        );
+        final addPhotosFinder = find.widgetWithText(FilledButton, 'Add photos');
         expect(addPhotosFinder, findsOneWidget);
 
         final addPhotosButton = tester.widget<FilledButton>(addPhotosFinder);

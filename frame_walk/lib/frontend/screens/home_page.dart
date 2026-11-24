@@ -72,9 +72,7 @@ class _HomePageState extends State<HomePage> {
                   scenery: _scenery,
                 );
                 if (routes.isEmpty) {
-                  return const Center(
-                    child: Text('No matching routes found.'),
-                  );
+                  return const Center(child: Text('No matching routes found.'));
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 12),

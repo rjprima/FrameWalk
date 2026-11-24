@@ -62,7 +62,8 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   void initState() {
     super.initState();
     _ownsService = widget.trackingService == null;
-    _service = widget.trackingService ??
+    _service =
+        widget.trackingService ??
         WalkTrackingService(
           locationSource: const GeolocatorLocationSource(),
           repository: WalkRepository(),
@@ -209,29 +210,32 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
       case LocationReadiness.serviceDisabled:
         text = _isIOS
             ? 'Location Services are turned off. Turn them on in '
-                '$_iosLocationServicesPath to track your walk.'
+                  '$_iosLocationServicesPath to track your walk.'
             : 'Location services are turned off. Turn them on to track '
-                'your walk.';
+                  'your walk.';
         action = ElevatedButton(
           onPressed: _service.openLocationSettings,
           child: Text(_isIOS ? 'Open Settings' : 'Open location settings'),
         );
       case LocationReadiness.denied:
-        text = 'FrameWalk needs your location to follow you along the route '
+        text =
+            'FrameWalk needs your location to follow you along the route '
             'and tell you when you reach each stop.';
         action = ElevatedButton(
           onPressed: _start,
           child: const Text('Allow location'),
         );
       case LocationReadiness.deniedForever:
-        text = 'Location access is turned off for FrameWalk. You can allow '
+        text =
+            'Location access is turned off for FrameWalk. You can allow '
             'it in Settings.';
         action = ElevatedButton(
           onPressed: _service.openAppSettings,
           child: const Text('Open settings'),
         );
       case LocationReadiness.approximateOnly:
-        text = 'FrameWalk needs your precise location to tell when you reach '
+        text =
+            'FrameWalk needs your precise location to tell when you reach '
             'a stop. Turn on "Precise location" for FrameWalk in Settings.';
         action = ElevatedButton(
           onPressed: _service.openAppSettings,
@@ -283,7 +287,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
                 next == null
                     ? 'All stops reached!'
                     : 'Next: ${next.stopName}'
-                        '${toNext == null ? '' : ' · ${_meters(toNext)} away'}',
+                          '${toNext == null ? '' : ' · ${_meters(toNext)} away'}',
               ),
               const SizedBox(height: 4),
               Text(
@@ -360,7 +364,8 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     final walk = _service.walk!;
     final reached = walk.reachedStopIds.length;
     return _Message(
-      text: 'Walk complete!\n\n'
+      text:
+          'Walk complete!\n\n'
           '$reached of ${walk.stops.length} stops reached\n'
           '${_meters(walk.distanceMeters)} walked in '
           '${walk.duration?.inMinutes ?? 0} min',
@@ -399,7 +404,7 @@ class _SignalBanner extends StatelessWidget {
       case SignalStatus.gpsDisabled:
         text = _isIOS
             ? 'Location Services are off. Turn them on in '
-                '$_iosLocationServicesPath to keep tracking.'
+                  '$_iosLocationServicesPath to keep tracking.'
             : 'Location services are off. Turn them on to keep tracking.';
         onFix = service.openLocationSettings;
         fixLabel = 'Settings';

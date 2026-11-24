@@ -15,7 +15,8 @@ class AccountPage extends StatelessWidget {
     final theme = Theme.of(context); // gets the theme of this BuildContext
     final profile = context.watch<ProfileProvider>(); // only watching the provider because only need to keep up with changes, not make any
 
-    return SafeArea( // avoids OS interfaces, like the island on iphones
+    return SafeArea(
+      // avoids OS interfaces, like the island on iphones
       child: SingleChildScrollView(
         padding: EdgeInsets.zero,
         child: Column(

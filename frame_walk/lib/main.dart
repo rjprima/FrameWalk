@@ -26,7 +26,9 @@ class FrameWalkApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => RouteProvider(
             bookmarkStore: SharedPreferencesBookmarkStore(),
-            userIds: FirebaseAuth.instance.authStateChanges().map((user) => user?.uid),
+            userIds: FirebaseAuth.instance.authStateChanges().map(
+              (user) => user?.uid,
+            ),
           ),
         ),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),

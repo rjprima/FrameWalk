@@ -126,7 +126,7 @@ class _RouteInfoPageState extends State<RouteInfoPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Map with back and bookmark buttons.
+              // Route map with back button.
               SizedBox(
                 height: 210,
                 child: Stack(
@@ -163,39 +163,6 @@ class _RouteInfoPageState extends State<RouteInfoPage> {
                           backgroundColor: colorScheme.surface,
                           foregroundColor: colorScheme.onSurface,
                         ),
-                      ),
-                    ),
-
-                    // Bookmark button, shared with the rest of the app.
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Consumer<RouteProvider>(
-                        builder: (context, provider, _) {
-                          final isBookmarked = provider.isBookmarked(
-                            widget.route.id,
-                          );
-                          return IconButton(
-                            tooltip: isBookmarked
-                                ? 'Remove bookmark'
-                                : 'Bookmark route',
-                            onPressed: () => toggleRouteBookmarkWithFeedback(
-                              context,
-                              isBookmarked: isBookmarked,
-                              onToggle: () =>
-                                  provider.toggleBookmark(widget.route.id),
-                            ),
-                            icon: Icon(
-                              isBookmarked
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
-                            ),
-                            style: IconButton.styleFrom(
-                              backgroundColor: colorScheme.surface,
-                              foregroundColor: colorScheme.onSurface,
-                            ),
-                          );
-                        },
                       ),
                     ),
                   ],
@@ -257,31 +224,102 @@ class _RouteInfoPageState extends State<RouteInfoPage> {
 
                     const SizedBox(height: 28),
 
-                    // Start Walk button.
-                    Center(
-                      child: SizedBox(
-                        width: 200,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ActiveWalkPage(
-                                route: widget.route,
-                                stops: _stops,
-                                routePoints: _routePoints,
+                    // Both actions inherit the app's button shape and sizing.
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ActiveWalkPage(
+                                    route: widget.route,
+                                    stops: _stops,
+                                    routePoints: _routePoints,
+                                  ),
+                                ),
                               ),
+                              child: const Text('Start Walk'),
                             ),
                           ),
-                          child: const Text('Start Walk'),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Consumer<RouteProvider>(
+                              builder: (context, provider, _) {
+                                final isBookmarked = provider.isBookmarked(
+                                  widget.route.id,
+                                );
+                                final canSave =
+                                    !provider.bookmarksLoading &&
+                                    provider.bookmarkError == null &&
+                                    provider.byId(widget.route.id) != null;
+                                return Tooltip(
+                                  message: provider.bookmarksLoading
+                                      ? 'Loading saved routes'
+                                      : provider.bookmarkError != null
+                                      ? 'Saved routes are unavailable'
+                                      : isBookmarked
+                                      ? 'Remove from Saved Walks'
+                                      : 'Save to Saved Walks in Activity',
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                          colorScheme.secondaryContainer,
+                                      foregroundColor:
+                                          colorScheme.onSecondaryContainer,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    onPressed: canSave
+                                        ? () => toggleRouteBookmarkWithFeedback(
+                                            context,
+                                            isBookmarked: isBookmarked,
+                                            onToggle: () =>
+                                                provider.toggleBookmark(
+                                                  widget.route.id,
+                                                ),
+                                          )
+                                        : null,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            isBookmarked
+                                                ? 'Saved'
+                                                : 'Save Route',
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          isBookmarked
+                                              ? Icons.bookmark
+                                              : Icons.bookmark_border,
+                                          size: 20,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
                     const SizedBox(height: 32),
 
                     Text(
-                      'Route Stops',
+                      'Route Stops and Prompts',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
 
@@ -331,7 +369,19 @@ class _RouteInfoPageState extends State<RouteInfoPage> {
                                   children: [
                                     Align(
                                       alignment: Alignment.centerLeft,
-                                      child: Text(stop.prompt),
+                                      child: Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            const TextSpan(
+                                              text: 'PROMPT: ',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            TextSpan(text: stop.prompt),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),

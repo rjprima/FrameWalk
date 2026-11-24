@@ -42,16 +42,16 @@ class RouteProgressTracker {
     this.approachRadiusMeters = 75,
     this.arrivalRadiusMeters = 25,
     this.accuracyAllowanceMeters = 15,
-  })  : _stops = List.of(stops),
-        _path = routePath.isNotEmpty
-            ? List.unmodifiable(routePath)
-            : List.unmodifiable(stops.map((stop) => stop.coordinate)),
-        _proximity = {
-          for (final stop in stops)
-            stop.stopId: stop.reachedAt != null
-                ? StopProximity.reached
-                : StopProximity.upcoming,
-        } {
+  }) : _stops = List.of(stops),
+       _path = routePath.isNotEmpty
+           ? List.unmodifiable(routePath)
+           : List.unmodifiable(stops.map((stop) => stop.coordinate)),
+       _proximity = {
+         for (final stop in stops)
+           stop.stopId: stop.reachedAt != null
+               ? StopProximity.reached
+               : StopProximity.upcoming,
+       } {
     if (arrivalRadiusMeters <= 0 ||
         approachRadiusMeters < arrivalRadiusMeters) {
       throw ArgumentError(
@@ -72,8 +72,7 @@ class RouteProgressTracker {
 
   bool get allStopsReached => _stops.isNotEmpty && reachedCount == totalStops;
 
-  double get fractionComplete =>
-      _stops.isEmpty ? 0 : reachedCount / totalStops;
+  double get fractionComplete => _stops.isEmpty ? 0 : reachedCount / totalStops;
 
   // The first stop, in route order, that hasn't been reached yet.
   WalkedStop? get nextStop {
@@ -116,21 +115,25 @@ class RouteProgressTracker {
       if (distance <= reachRadius) {
         _proximity[stop.stopId] = StopProximity.reached;
         _stops[i] = stop.copyWithReachedAt(sample.recordedAt);
-        events.add(StopEvent(
-          type: StopEventType.reached,
-          stop: _stops[i],
-          distanceMeters: distance,
-          time: sample.recordedAt,
-        ));
+        events.add(
+          StopEvent(
+            type: StopEventType.reached,
+            stop: _stops[i],
+            distanceMeters: distance,
+            time: sample.recordedAt,
+          ),
+        );
       } else if (distance <= approachRadiusMeters &&
           current == StopProximity.upcoming) {
         _proximity[stop.stopId] = StopProximity.approaching;
-        events.add(StopEvent(
-          type: StopEventType.approaching,
-          stop: stop,
-          distanceMeters: distance,
-          time: sample.recordedAt,
-        ));
+        events.add(
+          StopEvent(
+            type: StopEventType.approaching,
+            stop: stop,
+            distanceMeters: distance,
+            time: sample.recordedAt,
+          ),
+        );
       }
     }
     return events;

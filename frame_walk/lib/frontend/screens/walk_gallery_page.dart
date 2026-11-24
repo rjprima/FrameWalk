@@ -108,7 +108,7 @@ class _WalkGalleryPageState extends State<WalkGalleryPage> {
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: Text(
                     gallery.photos.isEmpty ? 'Add photos' : 'Add / edit photos',
-                    style: TextStyle(fontSize: 16)
+                    style: TextStyle(fontSize: 16),
                   ),
                 ),
           body: Column(
@@ -260,7 +260,6 @@ class _PromptSection extends StatelessWidget {
     );
   }
 }
-
 
 // Placeholder for a route stop with no photos with the same dimensions and shape as a photo thumbnail
 class _EmptyPhotoPlaceholder extends StatelessWidget {

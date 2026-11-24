@@ -20,7 +20,7 @@ class WalkRepository {
   final FirebaseFirestore _firestore;
 
   WalkRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _walks(String userId) =>
       _firestore.collection('users').doc(userId).collection('walks');
@@ -31,8 +31,7 @@ class WalkRepository {
   CollectionReference<Map<String, dynamic>> _points(
     String userId,
     String walkId,
-  ) =>
-      _walks(userId).doc(walkId).collection('locationPoints');
+  ) => _walks(userId).doc(walkId).collection('locationPoints');
 
   // A new unique walk ID. Generated on the device, so it works offline.
   String newWalkId(String userId) => _walks(userId).doc().id;
@@ -41,10 +40,8 @@ class WalkRepository {
     if (walk.status != WalkStatus.active) {
       throw ArgumentError('Only an active walk can be created');
     }
-    return _walkDoc(walk).set({
-      ...walk.toMap(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    return _walkDoc(walk)
+        .set({...walk.toMap(), 'updatedAt': FieldValue.serverTimestamp()});
   }
 
   // Saves recorded points and the walk's running totals together.
@@ -125,8 +122,7 @@ class WalkRepository {
     String userId,
     String walkId,
   ) async {
-    final snapshot =
-        await _points(userId, walkId).orderBy('sequence').get();
+    final snapshot = await _points(userId, walkId).orderBy('sequence').get();
     return snapshot.docs
         .map((doc) => LocationPoint.fromMap(doc.id, doc.data()))
         .toList();
