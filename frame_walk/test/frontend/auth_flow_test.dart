@@ -10,6 +10,9 @@ import 'package:frame_walk/frontend/screens/create_account_page.dart';
 import 'package:frame_walk/frontend/screens/landing_page.dart';
 import 'package:frame_walk/frontend/screens/login_page.dart';
 import 'package:mock_exceptions/mock_exceptions.dart';
+import 'package:provider/provider.dart';
+import 'package:frame_walk/backend/providers/profile_provider.dart';
+import 'package:frame_walk/backend/services/walk_repository.dart';
 
 void main() {
   late MockFirebaseAuth auth;
@@ -148,14 +151,29 @@ void main() {
 
   testWidgets('AccountPage logs the user out', (tester) async {
     await service.logIn(email: 'walker@example.com', password: 'password123');
+
+    final profile = ProfileProvider(
+      authService: service,
+      walkRepository: WalkRepository(firestore: firestore),
+      listenToAuthChanges: false,
+    );
+
+    await profile.refresh();
+
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: AccountPage(authService: service)),
+      ChangeNotifierProvider<ProfileProvider>.value(
+        value: profile,
+        child: MaterialApp(
+          home: Scaffold(body: AccountPage(authService: service)),
+        ),
       ),
     );
 
     await submit(tester, 'Log Out');
 
     expect(auth.currentUser, isNull);
+
+    await tester.pumpWidget(const SizedBox());
+    profile.dispose();
   });
 }
