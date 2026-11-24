@@ -321,6 +321,8 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 5),
+
                 Text(
                   '${progress.reachedCount} of ${progress.totalStops} stops reached',
                   style: Theme.of(context).textTheme.titleMedium,
@@ -343,11 +345,11 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
                 _buildCurrentPrompt(context, progress.reachedCount),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 20),
 
                 SizedBox(
                   width: double.infinity,
@@ -395,8 +397,12 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Current prompt:',
-           style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Current prompt:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             currentStop != null
