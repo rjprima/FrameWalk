@@ -19,9 +19,15 @@ enum WalkStatus {
   completed,
 }
 
-// FrameWalk records location only while the app is open on screen. Saved with
-// each walk so gaps in its history can be explained later.
+// How location was recorded, saved with each walk so gaps in its history can
+// be explained later.
+//
+// Only while FrameWalk was open on screen. Walks saved before background
+// tracking existed have this mode, as do walks on platforms without it.
 const String foregroundTrackingMode = 'foreground';
+
+// Also while FrameWalk was in the background or the phone was locked.
+const String backgroundTrackingMode = 'background';
 
 class WalkedRoute {
   final String id;
@@ -68,6 +74,7 @@ class WalkedRoute {
     required String routeTitle,
     required List<RouteStop> stops,
     required DateTime startedAt,
+    String trackingMode = foregroundTrackingMode,
   }) {
     return WalkedRoute(
       id: id,
@@ -75,6 +82,7 @@ class WalkedRoute {
       routeId: routeId,
       routeTitle: routeTitle,
       status: WalkStatus.active,
+      trackingMode: trackingMode,
       startedAt: startedAt,
       stops: stops.map(WalkedStop.fromRouteStop).toList(),
     );

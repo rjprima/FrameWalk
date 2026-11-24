@@ -13,6 +13,10 @@ class FakeLocationSource implements LocationSource {
   LocationPermissionStatus answerToRequest;
   bool precise;
 
+  // False by default, matching a platform without background tracking.
+  @override
+  bool supportsBackgroundTracking;
+
   int permissionRequests = 0;
   int streamsOpened = 0;
   int appSettingsOpened = 0;
@@ -27,6 +31,7 @@ class FakeLocationSource implements LocationSource {
     this.permission = LocationPermissionStatus.granted,
     LocationPermissionStatus? answerToRequest,
     this.precise = true,
+    this.supportsBackgroundTracking = false,
   }) : answerToRequest = answerToRequest ?? permission;
 
   // True while someone is listening to the position stream.

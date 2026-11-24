@@ -446,6 +446,126 @@ void main() {
     );
   });
 
+  group('background tracking', () {
+    setUp(() {
+      location.supportsBackgroundTracking = true;
+    });
+
+    test('saves the walk as background-tracked', () async {
+      await start();
+      expect(service.walk!.trackingMode, backgroundTrackingMode);
+      expect((await savedWalk())!.trackingMode, backgroundTrackingMode);
+    });
+
+    test('keeps the same stream open off screen and on return', () async {
+      await start();
+      walkTo(47.65, -122.30);
+
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+      await pumpEventQueue();
+      expect(location.isStreaming, isTrue);
+      expect(service.isInBackground, isTrue);
+      expect(service.signal, SignalStatus.good);
+      expect(
+        await savedPoints(),
+        hasLength(1),
+        reason: 'pending points are saved on the way out',
+      );
+
+      service.handleAppLifecycleState(AppLifecycleState.resumed);
+      await pumpEventQueue();
+      expect(location.isStreaming, isTrue);
+      expect(
+        location.streamsOpened,
+        1,
+        reason: 'reopening would leave a gap in the route',
+      );
+      expect(service.signal, SignalStatus.good);
+    });
+
+    test('records points and reaches stops while off screen', () async {
+      await start();
+      service.handleAppLifecycleState(AppLifecycleState.hidden);
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+      final events = <StopEvent>[];
+      final sub = service.stopEvents.listen(events.add);
+
+      walkTo(47.6559, -122.3078);
+      await pumpEventQueue();
+
+      expect(service.recordedPoints, hasLength(1));
+      expect(events.map((e) => e.type), contains(StopEventType.reached));
+      expect(service.progress!.reachedCount, 1);
+      final saved = (await savedWalk())!;
+      expect(saved.reachedStopIds, ['red_stop_1']);
+      expect(await savedPoints(), hasLength(1));
+      await sub.cancel();
+    });
+
+    test('notices a lost signal while off screen', () async {
+      await start();
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+      now = now.add(const Duration(minutes: 3));
+      service.runHousekeeping();
+      expect(service.signal, SignalStatus.noRecentFix);
+    });
+
+    test(
+      'waits until the app returns to reopen a stream that stopped',
+      () async {
+        await start();
+        service.handleAppLifecycleState(AppLifecycleState.paused);
+
+        location.setServiceEnabled(false);
+        await pumpEventQueue();
+        expect(location.isStreaming, isFalse);
+        expect(service.signal, SignalStatus.gpsDisabled);
+
+        location.setServiceEnabled(true);
+        await pumpEventQueue();
+        expect(
+          location.isStreaming,
+          isFalse,
+          reason: 'the OS forbids starting location updates off screen',
+        );
+
+        service.handleAppLifecycleState(AppLifecycleState.resumed);
+        await pumpEventQueue();
+        expect(location.isStreaming, isTrue);
+        expect(location.streamsOpened, 2);
+      },
+    );
+
+    test('stops when permission was revoked while off screen', () async {
+      await start();
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+      location.permission = LocationPermissionStatus.denied;
+
+      service.handleAppLifecycleState(AppLifecycleState.resumed);
+      await pumpEventQueue();
+      expect(location.isStreaming, isFalse);
+      expect(service.signal, SignalStatus.permissionRevoked);
+    });
+
+    test('completing from the background stops the stream', () async {
+      await start();
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+      walkTo(47.65, -122.30);
+
+      await service.completeWalk();
+      expect(location.isStreaming, isFalse);
+      expect(service.phase, WalkPhase.completed);
+    });
+
+    test('cancelling stops the stream', () async {
+      await start();
+      service.handleAppLifecycleState(AppLifecycleState.paused);
+
+      await service.cancelWalk();
+      expect(location.isStreaming, isFalse);
+    });
+  });
+
   group('completion and cancellation', () {
     test('completing stops tracking and saves the Walked-Route', () async {
       await start();

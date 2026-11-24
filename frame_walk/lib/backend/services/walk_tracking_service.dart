@@ -51,7 +51,8 @@ enum SignalStatus {
   // The user revoked location permission mid-walk.
   permissionRevoked,
 
-  // FrameWalk is off screen. Tracking is foreground-only, so it's paused.
+  // FrameWalk is off screen on a platform without background tracking (see
+  // [LocationSource.supportsBackgroundTracking]), so tracking is paused.
   pausedInBackground,
 }
 
@@ -93,8 +94,13 @@ class TrackingConfig {
 // along the route, saves their location history, and stops listening when the
 // walk is completed or cancelled.
 //
-// Foreground only. When FrameWalk leaves the screen, call
-// [handleAppLifecycleState] and tracking pauses until the app returns.
+// Call [handleAppLifecycleState] when FrameWalk leaves or returns to the
+// screen. Where the location source supports it, tracking carries on in the
+// background on the same stream; otherwise it pauses until the app returns.
+//
+// The OS won't let an app start location updates from the background, so a
+// stream that stops while off screen (GPS turned off, permission revoked) is
+// only reopened once the user returns to FrameWalk.
 class WalkTrackingService extends ChangeNotifier {
   final LocationSource _source;
   final WalkRepository _walkRepository;
@@ -141,6 +147,9 @@ class WalkTrackingService extends ChangeNotifier {
   LocationSample? get lastLocation => _lastAccepted;
   bool get isInBackground => _inBackground;
 
+  // Whether this walk keeps recording while FrameWalk is off screen.
+  bool get tracksInBackground => _source.supportsBackgroundTracking;
+
   // True only while the location stream is open.
   bool get isListening => _positionSub != null;
 
@@ -183,6 +192,9 @@ class WalkTrackingService extends ChangeNotifier {
       routeTitle: routeTitle,
       stops: stops,
       startedAt: _now(),
+      trackingMode: tracksInBackground
+          ? backgroundTrackingMode
+          : foregroundTrackingMode,
     );
     try {
       await _persist(_walkRepository.createWalk(walk));
@@ -263,8 +275,10 @@ class WalkTrackingService extends ChangeNotifier {
     }
   }
 
-  // Foreground-only tracking: closes the location stream when FrameWalk
-  // leaves the screen and reopens it on return.
+  // With background tracking, the stream stays open off screen; returning
+  // re-checks access in case the user changed it in Settings meanwhile.
+  // Without it, the stream closes when FrameWalk leaves the screen and
+  // reopens on return.
   void handleAppLifecycleState(AppLifecycleState state) {
     if (_phase != WalkPhase.active) return;
     switch (state) {
@@ -273,17 +287,40 @@ class WalkTrackingService extends ChangeNotifier {
       case AppLifecycleState.detached:
         if (_inBackground) return;
         _inBackground = true;
-        _cancelPositionStream();
+        // Saved on the way out either way: the OS may end FrameWalk while
+        // it's off screen.
         _flush();
-        _signal = SignalStatus.pausedInBackground;
+        if (!tracksInBackground) {
+          _cancelPositionStream();
+          _signal = SignalStatus.pausedInBackground;
+        }
         _notify();
       case AppLifecycleState.resumed:
         if (!_inBackground) return;
         _inBackground = false;
-        resumeTracking();
+        _onReturnedToForeground();
       case AppLifecycleState.inactive:
         // Brief interruptions such as permission dialogs. Keep listening.
         break;
+    }
+  }
+
+  Future<void> _onReturnedToForeground() async {
+    if (!isListening) {
+      // Paused, or the stream stopped while off screen.
+      await resumeTracking();
+      return;
+    }
+    // Still recording. Reopening the stream would cause a gap (and restart
+    // Android's foreground service), so only check nothing was revoked.
+    final readiness = await checkLocationReadiness(_source, request: false);
+    if (_phase != WalkPhase.active || _inBackground || _disposed) return;
+    if (readiness == LocationReadiness.ready ||
+        readiness == LocationReadiness.approximateOnly) {
+      _readiness = readiness;
+      _notify();
+    } else {
+      await resumeTracking();
     }
   }
 
@@ -335,7 +372,8 @@ class WalkTrackingService extends ChangeNotifier {
     final waitingForFix = _signal == SignalStatus.acquiring ||
         _signal == SignalStatus.good ||
         _signal == SignalStatus.lowAccuracy;
-    if (!_inBackground && waitingForFix) {
+    final expectingFixes = !_inBackground || tracksInBackground;
+    if (expectingFixes && waitingForFix) {
       final since = _lastFixReceivedAt ?? _walk!.startedAt;
       if (now.difference(since) >= config.signalLostAfter) {
         _signal = SignalStatus.noRecentFix;
@@ -354,7 +392,8 @@ class WalkTrackingService extends ChangeNotifier {
   }
 
   void _onSample(LocationSample sample) {
-    if (_phase != WalkPhase.active || _inBackground) return;
+    if (_phase != WalkPhase.active) return;
+    if (_inBackground && !tracksInBackground) return;
     _lastFixReceivedAt = _now();
 
     if (sample.accuracyMeters > config.maxAcceptedAccuracyMeters) {
@@ -436,6 +475,8 @@ class WalkTrackingService extends ChangeNotifier {
       _signal = SignalStatus.gpsDisabled;
       _notify();
     } else if (!_inBackground && !isListening) {
+      // Off screen, the stream can't be reopened (see class comment);
+      // _onReturnedToForeground does it instead.
       resumeTracking();
     }
   }

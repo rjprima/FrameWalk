@@ -22,7 +22,8 @@ bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 const _iosLocationServicesPath =
     'Settings > Privacy & Security > Location Services';
 
-// Records the user's walk along [route] while this page is on screen.
+// Records the user's walk along [route]. Tracking carries on while the phone
+// is locked or FrameWalk is in the background (see WalkTrackingService).
 class ActiveWalkPage extends StatefulWidget {
   const ActiveWalkPage({
     super.key,

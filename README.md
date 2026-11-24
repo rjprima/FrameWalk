@@ -578,9 +578,14 @@ Pressing **Start Walk** on a route opens the active-walk screen, which records w
 
 **Routes vs. Walked-Routes:** predefined routes are not stored with walks. A walk refers to its route by `routeId` and keeps its own copy of the stops. Only walks with `status: completed` are Walked-Routes.
 
-**Foreground only.** Location is recorded only while FrameWalk is open on screen. When the app goes to the background or the screen locks, tracking pauses and resumes when the user returns. The gap shows up in the location history timestamps. Background tracking would need, at minimum, a location foreground service (`FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION` permissions, `POST_NOTIFICATIONS` on Android 13+, and a `foregroundNotificationConfig` in `AndroidSettings`) on Android, and the `location` background mode on iOS. None of these are set up.
+**Background tracking.** On iOS and Android, a walk keeps recording while the phone is locked or FrameWalk is in the background, until the user finishes or cancels it. New walks are saved with `trackingMode: background` (older walks, and platforms without background tracking, use `foreground` and pause off screen).
 
-**Battery:** high accuracy with a 10 m distance filter (a 5 s minimum interval on Android), so no readings arrive while standing still. Points are saved to Firestore in batches of 10, or every 30 seconds.
+- **iOS:** `UIBackgroundModes` includes `location` in `ios/Runner/Info.plist` (the Xcode *Background Modes → Location updates* capability), and `AppleSettings.allowBackgroundLocationUpdates` is on. Only "While Using the App" permission is needed, because updates always start on screen. iOS shows a blue location indicator in the status bar while FrameWalk tracks in the background.
+- **Android:** `AndroidSettings.foregroundNotificationConfig` makes geolocator run updates in its foreground service, with a "FrameWalk is recording your walk" notification for the whole walk. The manifest declares `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` (Android 14+), and `WAKE_LOCK`. `ACCESS_BACKGROUND_LOCATION` is not needed and not declared.
+- Neither OS lets an app *start* location updates from the background. If location stops while FrameWalk is off screen (GPS turned off, permission revoked), tracking resumes only when the user reopens the app.
+- If the OS or the user ends FrameWalk entirely (e.g. swiping it away), tracking stops. Points recorded up to then are saved.
+
+**Battery:** high accuracy with a 10 m distance filter (a 5 s minimum interval on Android), so no readings arrive while standing still. iOS automatic pausing stays off because iOS wouldn't resume it. On Android a partial wake lock (CPU only, screen off) is held during the walk so stops are detected on time. All of this ends when the walk does. Points are saved to Firestore in batches of 10, or every 30 seconds, and whenever FrameWalk leaves the screen.
 
 **Permissions:** the app asks for "while using the app" location when a walk starts. If permission is denied, location services are off, or only approximate location is allowed, the screen explains why and links to the right settings. If the GPS signal drops mid-walk, the walk keeps going and a banner shows the problem.
 
