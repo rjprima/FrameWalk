@@ -9,6 +9,7 @@ import 'frontend/screens/auth_gate.dart';
 import 'frontend/theme/app_theme.dart';
 import 'backend/providers/profile_provider.dart';
 import 'backend/providers/route_provider.dart';
+import 'backend/services/bookmark_store.dart';
 import 'backend/services/stop_notification_service.dart';
 
 Future<void> main() async {
@@ -46,7 +47,12 @@ class FrameWalkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => RouteProvider()),
+        ChangeNotifierProvider(
+          create: (_) => RouteProvider(
+            bookmarkStore: SharedPreferencesBookmarkStore(),
+            userIds: FirebaseAuth.instance.authStateChanges().map((user) => user?.uid),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
       child: MaterialApp(

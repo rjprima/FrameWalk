@@ -21,8 +21,6 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
-  static const _routeColor = Color(0xFF7966FF);
-
   GoogleMapController? _mapController;
   BitmapDescriptor? _startIcon;
   BitmapDescriptor? _endIcon;
@@ -317,6 +315,9 @@ class _MapPageState extends State<MapPage> {
             child: Consumer<RouteProvider>(
               builder: (context, provider, _) {
                 final routes = _visibleRoutes(provider);
+                // Keep endpoints visible for every route, but draw only the
+                // selected route's outline and bend points.
+                final selectedRoutes = routes.where((r) => r.id == _selectedId);
                 return Stack(
                   children: [
                     GoogleMap(
@@ -335,15 +336,13 @@ class _MapPageState extends State<MapPage> {
                       zoomControlsEnabled: true,
                       padding: const EdgeInsets.only(top: 44, bottom: 8),
                       polylines: {
-                        for (final route in routes)
+                        for (final route in selectedRoutes)
                           Polyline(
                             polylineId: PolylineId(route.id),
                             points: MockRouteData.getRoutePoints(route.id),
-                            color: route.id == _selectedId
-                                ? AppTheme.teal
-                                : _routeColor,
-                            width: route.id == _selectedId ? 6 : 3,
-                            zIndex: route.id == _selectedId ? 2 : 1,
+                            color: AppTheme.teal,
+                            width: 6,
+                            zIndex: 2,
                             consumeTapEvents: true,
                             onTap: () => _selectRoute(route),
                           ),
@@ -353,7 +352,7 @@ class _MapPageState extends State<MapPage> {
                           ..._routeEndpointMarkers(route),
                       },
                       circles: {
-                        for (final route in routes)
+                        for (final route in selectedRoutes)
                           for (
                             var i = 1;
                             i <
@@ -366,9 +365,7 @@ class _MapPageState extends State<MapPage> {
                               center: MockRouteData.getRoutePoints(route.id)[i],
                               radius: 7,
                               fillColor: Colors.white,
-                              strokeColor: route.id == _selectedId
-                                  ? AppTheme.teal
-                                  : _routeColor,
+                              strokeColor: AppTheme.teal,
                               strokeWidth: 2,
                               consumeTapEvents: true,
                               onTap: () => _selectRoute(route),

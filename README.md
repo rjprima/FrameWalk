@@ -486,7 +486,7 @@ iOS builds need a Mac with Xcode (from the App Store) and CocoaPods (`brew insta
 
 | What | Value / location |
 | --- | --- |
-| iOS bundle ID | `com.jltrinh.frameWalk` (Xcode: Runner > Signing & Capabilities). It differs from the Android ID because iOS doesn't allow `_` in bundle IDs. |
+| iOS bundle ID | Team default `com.jltrinh.frameWalk` (team `3WQ2H2UFVZ`), set as `FRAMEWALK_BUNDLE_ID`/`FRAMEWALK_DEVELOPMENT_TEAM` in `ios/Flutter/Debug.xcconfig` and `Release.xcconfig`. You can override both in your `Secrets.xcconfig` (see [Using your own bundle ID and Apple team](#using-your-own-bundle-id-and-apple-team)). It differs from the Android ID because iOS doesn't allow `_` in bundle IDs. |
 | Where your iOS Maps key goes | `MAPS_API_KEY=...` in `frame_walk/ios/Flutter/Secrets.xcconfig`, which is not committed (ignored by `frame_walk/ios/.gitignore`) |
 | How the key reaches the app | `Debug.xcconfig`/`Release.xcconfig` include `Secrets.xcconfig` > `Info.plist` (`GMSApiKey`) > `AppDelegate.swift` calls `GMSServices.provideAPIKey` |
 
@@ -496,7 +496,7 @@ Your Android key can't be reused: it's restricted to Android apps and the Maps S
 
 1. In **APIs & Services > Library**, enable **Maps SDK for iOS**.
 2. In **APIs & Services > Credentials**, click **+ Create credentials > API key**.
-3. Restrict it: under **Application restrictions** choose **iOS apps** and add `com.jltrinh.frameWalk`; under **API restrictions** choose **Maps SDK for iOS** only. Click **Save**.
+3. Restrict it: under **Application restrictions** choose **iOS apps** and add the bundle ID you build with (`com.jltrinh.frameWalk`, or your own if you override it); under **API restrictions** choose **Maps SDK for iOS** only. Click **Save**, and check that the change actually saved. A bundle ID that is missing or misspelled here gives a gray grid with a "Google" logo and no map tiles.
 4. Create `frame_walk/ios/Flutter/Secrets.xcconfig` containing one line, with no quotes:
 
    ```properties
@@ -517,7 +517,22 @@ flutter run -d ios
 ```
 
 - **Simulator:** no Apple account is needed. To fake a location, use the Simulator menu **Features > Location > Custom Location** (for example Red Square, `47.6559, -122.3078`). To simulate walking, run the app from Xcode (`open ios/Runner.xcworkspace`) and use **Debug > Simulate Location** with a GPX file.
-- **Physical iPhone:** the project is signed with the team that registered `com.jltrinh.frameWalk`. Ask that teammate to add you to their Apple Developer team, then select that team in Xcode under **Runner > Signing & Capabilities**. Turn on **Developer Mode** on the phone (**Settings > Privacy & Security > Developer Mode**). If you choose a different team locally, don't commit the resulting `project.pbxproj` change.
+- **Physical iPhone:** by default the project is signed with the team that registered `com.jltrinh.frameWalk`. Either ask that teammate to add you to their Apple Developer team, or use your own bundle ID and team as described below. Turn on **Developer Mode** on the phone (**Settings > Privacy & Security > Developer Mode**).
+
+### Using your own bundle ID and Apple team
+
+To sign with your own (for example, free personal) Apple team, add two lines to your `frame_walk/ios/Flutter/Secrets.xcconfig`, below `MAPS_API_KEY`:
+
+```properties
+FRAMEWALK_BUNDLE_ID = com.yourname.frameWalk
+FRAMEWALK_DEVELOPMENT_TEAM = YOURTEAMID
+```
+
+- Your team ID is shown in Xcode under **Settings > Accounts** (select the team), or at <https://developer.apple.com/account> under **Membership details**.
+- Add the same bundle ID to your iOS Maps key's **iOS apps** restriction, or the map will be gray.
+- Firebase doesn't need changes. The app initializes Firebase from `lib/firebase_options.dart`, and email/password login, Firestore and Storage work with any bundle ID.
+- Check what Xcode resolves (from `frame_walk/ios`): `xcodebuild -workspace Runner.xcworkspace -scheme Runner -showBuildSettings | grep -E " (PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM) ="`
+- **Don't pick a team in Xcode's Signing & Capabilities screen.** Xcode writes the team ID straight into `project.pbxproj`, replacing `$(FRAMEWALK_DEVELOPMENT_TEAM)`. If that happens, discard the change (`git restore ios/Runner.xcodeproj/project.pbxproj`) and set the team in `Secrets.xcconfig` instead.
 
 ### iOS differences
 

@@ -1,5 +1,11 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
 
-// Each developer's own Google Maps API key (not committed). See README "iOS Setup".
+// Team defaults for the iOS bundle ID and signing team. To build with your own
+// Apple team, override these in Secrets.xcconfig (included below, so it wins).
+FRAMEWALK_BUNDLE_ID = com.jltrinh.frameWalk
+FRAMEWALK_DEVELOPMENT_TEAM = 3WQ2H2UFVZ
+
+// Each developer's own Google Maps API key and optional bundle ID/team overrides
+// (not committed). See README "iOS Setup".
 #include? "Secrets.xcconfig"
