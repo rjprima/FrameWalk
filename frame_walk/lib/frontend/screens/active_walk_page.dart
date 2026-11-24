@@ -10,6 +10,7 @@ import '../../backend/providers/profile_provider.dart';
 import '../../backend/services/location_source.dart';
 import '../../backend/services/route_manager.dart';
 import '../../backend/services/route_progress_tracker.dart';
+import '../../backend/services/stop_notification_service.dart';
 import '../../backend/services/walk_repository.dart';
 import '../../backend/services/walk_tracking_service.dart';
 import '../../models/location_point.dart';
@@ -31,6 +32,7 @@ class ActiveWalkPage extends StatefulWidget {
     required this.stops,
     required this.routePoints,
     this.trackingService,
+    this.stopNotifications,
     this.userId,
     this.showMap = true,
   });
@@ -41,6 +43,9 @@ class ActiveWalkPage extends StatefulWidget {
 
   // Injected by tests. Defaults to GPS and Firestore.
   final WalkTrackingService? trackingService;
+
+  // Injected by tests. Defaults to local notifications.
+  final StopNotificationService? stopNotifications;
 
   // Defaults to the signed-in user.
   final String? userId;
@@ -56,6 +61,9 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     with WidgetsBindingObserver {
   late final WalkTrackingService _service;
   late final bool _ownsService;
+  late final StopNotificationService _notifications;
+  late final StopArrivalNotifier _arrivalNotifier;
+  bool _askedForNotifications = false;
   StreamSubscription<StopEvent>? _stopEventsSub;
   Timer? _clock;
 
@@ -70,6 +78,14 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
         );
     _service.addListener(_onServiceChanged);
     _stopEventsSub = _service.stopEvents.listen(_onStopEvent);
+    _notifications =
+        widget.stopNotifications ?? LocalStopNotificationService();
+    // Notifies about stops reached while the phone is locked or FrameWalk
+    // is in the background; on screen, _onStopEvent shows a SnackBar.
+    _arrivalNotifier = StopArrivalNotifier(
+      walk: _service,
+      notifications: _notifications,
+    );
     WidgetsBinding.instance.addObserver(this);
     // Refreshes the elapsed time. Coarse on purpose to avoid needless redraws.
     _clock = Timer.periodic(const Duration(seconds: 15), (_) {
@@ -83,6 +99,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     WidgetsBinding.instance.removeObserver(this);
     _clock?.cancel();
     _stopEventsSub?.cancel();
+    _arrivalNotifier.dispose();
     _service.removeListener(_onServiceChanged);
     // Disposing stops the location stream, whatever state the walk is in.
     if (_ownsService) _service.dispose();
@@ -101,6 +118,15 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   Future<void> _start() async {
     final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
+    // Asked before tracking starts so Android's "recording your walk"
+    // notification is visible from the beginning. Only once per walk: on
+    // Android, asking again after a "no" would prompt again. A "no" doesn't
+    // block the walk; stops are still shown on screen.
+    if (!_askedForNotifications) {
+      _askedForNotifications = true;
+      await _notifications.requestPermission();
+      if (!mounted) return;
+    }
     await _service.startWalk(
       userId: userId,
       routeId: widget.route.id,

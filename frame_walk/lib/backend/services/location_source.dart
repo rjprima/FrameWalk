@@ -203,6 +203,10 @@ class GeolocatorLocationSource implements LocationSource {
           notificationText:
               'Tracking your route until you finish or cancel the walk.',
           notificationChannelName: 'Walk tracking',
+          notificationIcon: AndroidResource(
+            name: 'ic_stat_framewalk',
+            defType: 'drawable',
+          ),
           // Keeps the CPU awake (not the screen) so readings are handled as
           // they arrive rather than in a burst when the phone wakes, which
           // would announce stops late. Held only while the stream is open.

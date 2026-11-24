@@ -593,6 +593,20 @@ Pressing **Start Walk** on a route opens the active-walk screen, which records w
 
 **Testing on an emulator:** open the emulator's **Extended controls (⋯) > Location** and set a point near a stop (for example Red Square, `47.6559, -122.3078`), or play back a route.
 
+## Stop Notifications
+
+When a stop is reached while the phone is locked or FrameWalk is in the background, the user gets a local notification: **"You've reached your next stop!"** with the stop name, its photography prompt, and "Open FrameWalk to see your progress." On screen, a SnackBar shows the same thing instead. Notifications are created on the device by [`flutter_local_notifications`](https://pub.dev/packages/flutter_local_notifications). No server or Firebase Cloud Messaging is involved.
+
+| Piece | File |
+| --- | --- |
+| Notification text, permission, display, duplicate prevention | `lib/backend/services/stop_notification_service.dart` |
+| Status-bar icon (white on transparent) | `android/app/src/main/res/drawable/ic_stat_framewalk.xml` |
+
+- **Permission** is asked once, when a walk starts. Saying no doesn't block the walk. Re-enable it in Settings > FrameWalk > Notifications.
+- **Duplicates:** each stop is reached once (`RouteProgressTracker`) and notified once per walk. Its notification ID is derived from the walk and stop, so a repeat would replace rather than stack.
+- **Android setup** required by the plugin: core-library desugaring and `compileSdk` 37 in `android/app/build.gradle.kts`, and AGP 9.1.1+ in `android/settings.gradle.kts`. `android/app/src/main/res/raw/keep.xml` stops release builds from removing the notification icon, which Dart only refers to by name.
+- **iOS setup:** `AppDelegate.swift` sets the notification-centre delegate. No capability or `Info.plist` change is needed for local notifications. The Push Notifications capability is only for remote push.
+
 ## Walk Photos
 
 After a walk is completed, users can add photos to it and tag each one with a prompt from that walk, or with "No prompt". Image files go in Firebase Storage. Their metadata and prompt association go in Firestore.
