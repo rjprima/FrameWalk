@@ -335,6 +335,63 @@ void main() {
       expect(await savedPoints(), hasLength(2));
       await sub.cancel();
     });
+
+    test('only the next stop in route order can be reached', () async {
+      await start();
+      // At Suzzallo Library (the second stop) before Red Square.
+      walkTo(47.6553, -122.3099);
+      await pumpEventQueue();
+
+      expect(service.progress!.reachedCount, 0);
+      expect((await savedWalk())!.reachedStopIds, isEmpty);
+
+      // Each save finishes before the next reading, as on a device, where
+      // readings are at least 5 s apart. (fake_cloud_firestore applies a
+      // batch's writes one by one, so back-to-back batches interleave.)
+      walkTo(47.6559, -122.3078, seconds: 60);
+      await pumpEventQueue();
+      walkTo(47.6553, -122.3099, seconds: 120);
+      await pumpEventQueue();
+      expect(
+        (await savedWalk())!.reachedStopIds,
+        ['red_stop_1', 'red_stop_2'],
+      );
+    });
+
+    test('records an imprecise reading but does not arrive on it', () async {
+      await start();
+      // 40 m accuracy is good enough to record (50 m) but not to arrive (25).
+      walkTo(47.6559, -122.3078, acc: 40);
+      await pumpEventQueue();
+
+      expect(service.recordedPoints, hasLength(1));
+      expect(service.progress!.reachedCount, 0);
+
+      walkTo(47.6559, -122.3078, acc: 6);
+      await pumpEventQueue();
+      expect((await savedWalk())!.reachedStopIds, ['red_stop_1']);
+    });
+
+    test('passes the configured arrival settings to the tracker', () async {
+      service.dispose();
+      service = WalkTrackingService(
+        locationSource: location,
+        repository: repository,
+        clock: () => now,
+        config: const TrackingConfig(
+          housekeepingInterval: Duration(hours: 1),
+          arrivalRadiusMeters: 10,
+          maxArrivalAccuracyMeters: 15,
+          stopOrder: StopOrder.anyOrder,
+        ),
+      );
+      await start();
+      final tracker = service.progress!;
+      expect(tracker.arrivalRadiusMeters, 10);
+      expect(tracker.maxArrivalAccuracyMeters, 15);
+      expect(tracker.stopOrder, StopOrder.anyOrder);
+      expect(tracker.maxPlausibleSpeedMetersPerSecond, 12);
+    });
   });
 
   group('battery-conscious tracking', () {

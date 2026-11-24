@@ -568,6 +568,8 @@ flutter test test/backend/services/auth_service_test.dart test/frontend/auth_flo
 
 Pressing **Start Walk** on a route opens the active-walk screen, which records where the user walks and tells them when they approach (within 75 m) or reach (within 25 m) each stop.
 
+**Arrival detection** (`RouteProgressTracker`, settings in `TrackingConfig`): stops are reached in route order. Each reading is checked against the next unreached stop only, and reaches at most one stop. The 25 m arrival radius widens by the reading's accuracy, up to 15 m. A reading only confirms arrival if its accuracy is 25 m or better, and if it isn't a jump faster than 12 m/s from the previous reading (a GPS glitch). Readings up to 50 m accuracy are still recorded for the route. Each stop is reached once, and the reached time is saved to Firestore immediately. `stopOrder: StopOrder.anyOrder` allows stops to be visited in any order instead.
+
 | Piece | File |
 | --- | --- |
 | Device location (the only code that uses `geolocator`) | `lib/backend/services/location_source.dart` |

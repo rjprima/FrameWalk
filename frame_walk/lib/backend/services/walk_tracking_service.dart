@@ -67,6 +67,14 @@ class TrackingConfig {
   // anything this fast is a GPS jump, not the user.
   final double maxPlausibleSpeedMetersPerSecond;
 
+  // Stop detection; see RouteProgressTracker. Arrival needs a reading at
+  // least as precise as [maxArrivalAccuracyMeters], which is stricter than
+  // [maxAcceptedAccuracyMeters] for recording the route.
+  final double approachRadiusMeters;
+  final double arrivalRadiusMeters;
+  final double maxArrivalAccuracyMeters;
+  final StopOrder stopOrder;
+
   // Points are saved in batches to reduce radio use and Firestore writes.
   final int flushEveryPoints;
   final Duration flushInterval;
@@ -82,6 +90,10 @@ class TrackingConfig {
     this.settings = const TrackingSettings(),
     this.maxAcceptedAccuracyMeters = 50,
     this.maxPlausibleSpeedMetersPerSecond = 12,
+    this.approachRadiusMeters = 75,
+    this.arrivalRadiusMeters = 25,
+    this.maxArrivalAccuracyMeters = 25,
+    this.stopOrder = StopOrder.sequential,
     this.flushEveryPoints = 10,
     this.flushInterval = const Duration(seconds: 30),
     this.signalLostAfter = const Duration(minutes: 2),
@@ -206,7 +218,16 @@ class WalkTrackingService extends ChangeNotifier {
     if (_disposed) return readiness;
 
     _walk = walk;
-    _progress = RouteProgressTracker(stops: walk.stops, routePath: routePath);
+    _progress = RouteProgressTracker(
+      stops: walk.stops,
+      routePath: routePath,
+      approachRadiusMeters: config.approachRadiusMeters,
+      arrivalRadiusMeters: config.arrivalRadiusMeters,
+      maxArrivalAccuracyMeters: config.maxArrivalAccuracyMeters,
+      // The same limit that keeps GPS jumps out of the walked distance.
+      maxPlausibleSpeedMetersPerSecond: config.maxPlausibleSpeedMetersPerSecond,
+      stopOrder: config.stopOrder,
+    );
     _points.clear();
     _pending.clear();
     _lastAccepted = null;
