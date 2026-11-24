@@ -8,29 +8,32 @@ class MemoryBookmarkStore implements BookmarkStore {
   @override
   Future<List<String>> read(String uid) async => List.of(data[uid] ?? []);
   @override
-  Future<void> write(String uid, List<String> ids) async => data[uid] = List.of(ids);
+  Future<void> write(String uid, List<String> ids) async =>
+      data[uid] = List.of(ids);
 }
 
-RouteProvider newProvider(BookmarkStore store) => RouteProvider(
-  seedMockData: false,
-  bookmarkStore: store,
-)..addRoute(WalkingRoute(id: 'a', name: 'Walk A', stopIds: []))
- ..addRoute(WalkingRoute(id: 'b', name: 'Walk B', stopIds: []));
+RouteProvider newProvider(BookmarkStore store) =>
+    RouteProvider(seedMockData: false, bookmarkStore: store)
+      ..addRoute(WalkingRoute(id: 'a', name: 'Walk A', stopIds: []))
+      ..addRoute(WalkingRoute(id: 'b', name: 'Walk B', stopIds: []));
 
 void main() {
-  test('bookmark survives provider recreation (simulated app restart)', () async {
-    final store = MemoryBookmarkStore();
-    final first = newProvider(store);
-    await first.loadBookmarksForUser('alice');
-    first.toggleBookmark('a');
-    await first.bookmarksSaved;
-    first.dispose();
-    final restarted = newProvider(store);
-    await restarted.loadBookmarksForUser('alice');
-    expect(restarted.isBookmarked('a'), isTrue);
-    expect(restarted.isBookmarked('b'), isFalse);
-    restarted.dispose();
-  });
+  test(
+    'bookmark survives provider recreation (simulated app restart)',
+    () async {
+      final store = MemoryBookmarkStore();
+      final first = newProvider(store);
+      await first.loadBookmarksForUser('alice');
+      first.toggleBookmark('a');
+      await first.bookmarksSaved;
+      first.dispose();
+      final restarted = newProvider(store);
+      await restarted.loadBookmarksForUser('alice');
+      expect(restarted.isBookmarked('a'), isTrue);
+      expect(restarted.isBookmarked('b'), isFalse);
+      restarted.dispose();
+    },
+  );
 
   test('unbookmark also persists', () async {
     final store = MemoryBookmarkStore();

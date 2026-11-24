@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class RouteFilterChips extends StatelessWidget {
@@ -34,47 +33,31 @@ class RouteFilterChips extends StatelessWidget {
     return PopupMenuButton<String>(
       onSelected: onSelected,
       color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       itemBuilder: (context) => options.map((option) {
-        return PopupMenuItem<String>(
-          value: option,
-          child: Text(option),
-        );
+        return PopupMenuItem<String>(value: option, child: Text(option));
       }).toList(),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selectedValue == label
-              ? lightGreen
-              : darkGreen,
+          color: selectedValue == label ? lightGreen : darkGreen,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              selectedValue == label
-                  ? label
-                  : selectedValue,
+              selectedValue == label ? label : selectedValue,
               style: TextStyle(
                 fontSize: 14,
-                color: selectedValue == label
-                    ? Colors.black87
-                    : Colors.white,
+                color: selectedValue == label ? Colors.black87 : Colors.white,
               ),
             ),
             const SizedBox(width: 4),
             Icon(
               Icons.arrow_drop_down,
               size: 16,
-              color: selectedValue == label
-                  ? Colors.black87
-                  : Colors.white,
+              color: selectedValue == label ? Colors.black87 : Colors.white,
             ),
           ],
         ),
@@ -91,24 +74,14 @@ class RouteFilterChips extends StatelessWidget {
           _buildChip(
             label: 'Any duration',
             selectedValue: duration,
-            options: const [
-              'Any duration',
-              '0-15 min',
-              '15-30 min',
-              '30+ min',
-            ],
+            options: const ['Any duration', '0-15 min', '15-30 min', '30+ min'],
             onSelected: onDurationChanged,
           ),
           const SizedBox(width: 8),
           _buildChip(
             label: 'Any distance',
             selectedValue: distance,
-            options: const [
-              'Any distance',
-              'Under 1 mi',
-              '1-2 mi',
-              '2+ mi',
-            ],
+            options: const ['Any distance', 'Under 1 mi', '1-2 mi', '2+ mi'],
             onSelected: onDistanceChanged,
           ),
           const SizedBox(width: 8),

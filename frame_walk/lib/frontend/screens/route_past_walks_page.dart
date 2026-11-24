@@ -87,9 +87,9 @@ class _RoutePastWalksPageState extends State<RoutePastWalksPage> {
               ),
 
               if (walks.isEmpty)
-              /// this should be dead code since the only way to get to this page is to 
-              /// click a route card from the past walks page, which implies that it has
-              /// walks associated with it
+                /// this should be dead code since the only way to get to this page is to
+                /// click a route card from the past walks page, which implies that it has
+                /// walks associated with it
                 const Expanded(
                   child: Center(child: Text('No completed walks found.')),
                 )

@@ -90,14 +90,14 @@ class LocationPoint {
   GeoCoordinate get coordinate => GeoCoordinate(latitude, longitude);
 
   Map<String, dynamic> toMap() => {
-        'sequence': sequence,
-        'latitude': latitude,
-        'longitude': longitude,
-        'accuracyMeters': accuracyMeters,
-        'recordedAt': Timestamp.fromDate(recordedAt),
-        if (speedMetersPerSecond != null)
-          'speedMetersPerSecond': speedMetersPerSecond,
-      };
+    'sequence': sequence,
+    'latitude': latitude,
+    'longitude': longitude,
+    'accuracyMeters': accuracyMeters,
+    'recordedAt': Timestamp.fromDate(recordedAt),
+    if (speedMetersPerSecond != null)
+      'speedMetersPerSecond': speedMetersPerSecond,
+  };
 
   factory LocationPoint.fromMap(String id, Map<String, dynamic> map) {
     return LocationPoint(
@@ -129,7 +129,8 @@ class GeoMath {
     final lat2 = _radians(b.latitude);
     final dLat = lat2 - lat1;
     final dLng = _radians(b.longitude - a.longitude);
-    final h = math.pow(math.sin(dLat / 2), 2) +
+    final h =
+        math.pow(math.sin(dLat / 2), 2) +
         math.cos(lat1) * math.cos(lat2) * math.pow(math.sin(dLng / 2), 2);
     return 2 * earthRadiusMeters * math.asin(math.min(1, math.sqrt(h)));
   }
@@ -145,11 +146,9 @@ class GeoMath {
 
     final cosLat = math.cos(_radians(point.latitude));
     ({double x, double y}) project(GeoCoordinate c) => (
-          x: _radians(c.longitude - point.longitude) *
-              cosLat *
-              earthRadiusMeters,
-          y: _radians(c.latitude - point.latitude) * earthRadiusMeters,
-        );
+      x: _radians(c.longitude - point.longitude) * cosLat * earthRadiusMeters,
+      y: _radians(c.latitude - point.latitude) * earthRadiusMeters,
+    );
 
     var best = double.infinity;
     for (var i = 0; i < path.length - 1; i++) {

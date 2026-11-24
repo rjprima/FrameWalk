@@ -78,10 +78,9 @@ void main() {
     );
     // Every real user has an account document; saving photos updates its
     // photosTaken count. Merged so seeding a second walk keeps the count.
-    await firestore
-        .collection('users')
-        .doc(userId)
-        .set({'username': userId}, SetOptions(merge: true));
+    await firestore.collection('users').doc(userId).set({
+      'username': userId,
+    }, SetOptions(merge: true));
     await firestore
         .collection('users')
         .doc(userId)

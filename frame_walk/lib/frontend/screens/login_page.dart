@@ -56,9 +56,8 @@ class _LoginPageState extends State<LoginPage> {
     } on AuthFailure catch (failure) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(failure.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
 
@@ -161,7 +160,10 @@ class _LoginPageState extends State<LoginPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isSubmitting ? null : _login,
-                      child: const Text('Log In', style: TextStyle(fontSize: 16)),
+                      child: const Text(
+                        'Log In',
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                   ),
 
