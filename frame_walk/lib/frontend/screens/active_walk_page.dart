@@ -10,10 +10,13 @@ import '../../backend/providers/profile_provider.dart';
 import '../../backend/services/location_source.dart';
 import '../../backend/services/route_manager.dart';
 import '../../backend/services/route_progress_tracker.dart';
+import '../../backend/services/stop_notification_service.dart';
 import '../../backend/services/walk_repository.dart';
 import '../../backend/services/walk_tracking_service.dart';
 import '../../models/location_point.dart';
+import '../../models/mock_route_data.dart';
 import '../../models/route_stop.dart';
+import '../../models/walked_route.dart';
 import '../theme/app_theme.dart';
 
 // iOS apps can't open the device-wide Location Services switch directly.
@@ -22,23 +25,61 @@ bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 const _iosLocationServicesPath =
     'Settings > Privacy & Security > Location Services';
 
-// Records the user's walk along [route] while this page is on screen.
+// The walk screen currently open, if any. A notification tap uses it to show
+// a stop on the screen that's already there rather than opening a second one.
+abstract class OpenWalkScreen {
+  // Null while a new walk is still being created.
+  String? get walkId;
+
+  void showStop(String stopId);
+}
+
+// Records the user's walk along [route]. Tracking carries on while the phone
+// is locked or FrameWalk is in the background (see WalkTrackingService).
 class ActiveWalkPage extends StatefulWidget {
+  // Starts a new walk of [route].
   const ActiveWalkPage({
     super.key,
-    required this.route,
+    required WalkingRoute this.route,
     required this.stops,
     required this.routePoints,
     this.trackingService,
+    this.stopNotifications,
     this.userId,
     this.showMap = true,
-  });
+  }) : resumeWalkId = null,
+       focusStopId = null;
 
-  final WalkingRoute route;
+  // Reopens walk [resumeWalkId], loading it from Firestore, and carries on
+  // tracking it. Used when a stop notification is tapped. [focusStopId] is
+  // the stop to show once the walk has loaded.
+  const ActiveWalkPage.resume({
+    super.key,
+    required String this.resumeWalkId,
+    this.focusStopId,
+    this.trackingService,
+    this.stopNotifications,
+    this.userId,
+    this.showMap = true,
+  }) : route = null,
+       stops = const [],
+       routePoints = const [];
+
+  // The open walk screen, or null if there isn't one.
+  static OpenWalkScreen? get openScreen => _ActiveWalkPageState._open;
+
+  // Null for a resumed walk; its details come from the saved walk instead.
+  final WalkingRoute? route;
   final List<RouteStop> stops;
   final List<LatLng> routePoints;
+  final String? resumeWalkId;
+  final String? focusStopId;
 
   final WalkTrackingService? trackingService;
+
+  // Injected by tests. Defaults to local notifications.
+  final StopNotificationService? stopNotifications;
+
   final String? userId;
   final bool showMap;
 
@@ -47,12 +88,31 @@ class ActiveWalkPage extends StatefulWidget {
 }
 
 class _ActiveWalkPageState extends State<ActiveWalkPage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver
+    implements OpenWalkScreen {
+  static _ActiveWalkPageState? _open;
+
   late final WalkTrackingService _service;
   late final bool _ownsService;
+  late final StopNotificationService _notifications;
+  late final StopArrivalNotifier _arrivalNotifier;
+  bool _askedForNotifications = false;
 
   StreamSubscription<StopEvent>? _stopEventsSub;
   Timer? _clock;
+  late List<LatLng> _routePoints = widget.routePoints;
+
+  // The stop from a tapped notification. Shown in the Current prompt box
+  // until the next stop is reached.
+  late String? _focusedStopId = widget.focusStopId;
+
+  @override
+  String? get walkId => _service.walk?.id ?? widget.resumeWalkId;
+
+  @override
+  void showStop(String stopId) {
+    if (mounted) setState(() => _focusedStopId = stopId);
+  }
 
   @override
   void initState() {
@@ -70,6 +130,15 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     _service.addListener(_onServiceChanged);
     _stopEventsSub = _service.stopEvents.listen(_onStopEvent);
 
+    _notifications = widget.stopNotifications ?? LocalStopNotificationService();
+
+    // Notifies about stops reached while the phone is locked or FrameWalk
+    // is in the background; on screen, _onStopEvent shows a SnackBar.
+    _arrivalNotifier = StopArrivalNotifier(
+      walk: _service,
+      notifications: _notifications,
+    );
+
     WidgetsBinding.instance.addObserver(this);
 
     // Refreshes elapsed time without unnecessary redraws.
@@ -77,14 +146,17 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
       if (mounted) setState(() {});
     });
 
+    _open = this;
     _start();
   }
 
   @override
   void dispose() {
+    if (identical(_open, this)) _open = null;
     WidgetsBinding.instance.removeObserver(this);
     _clock?.cancel();
     _stopEventsSub?.cancel();
+    _arrivalNotifier.dispose();
     _service.removeListener(_onServiceChanged);
 
     if (_ownsService) _service.dispose();
@@ -105,20 +177,56 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
+    final resumeWalkId = widget.resumeWalkId;
+    if (resumeWalkId != null) {
+      // Notification permission was settled when the walk first started.
+      await _service.resumeWalk(
+        userId: userId,
+        walkId: resumeWalkId,
+        routePathFor: _loadRoutePath,
+      );
+      return;
+    }
+
+    // Asked before tracking starts so Android's "recording your walk"
+    // notification is visible from the beginning. Only once per walk: on
+    // Android, asking again after a "no" would prompt again. A "no" doesn't
+    // block the walk; stops are still shown on screen.
+    if (!_askedForNotifications) {
+      _askedForNotifications = true;
+      await _notifications.requestPermission();
+      if (!mounted) return;
+    }
+
     await _service.startWalk(
       userId: userId,
-      routeId: widget.route.id,
-      routeTitle: widget.route.name,
+      routeId: widget.route!.id,
+      routeTitle: widget.route!.name,
       stops: widget.stops,
-      routePath: widget.routePoints
+      routePath: _routePoints
           .map((p) => GeoCoordinate(p.latitude, p.longitude))
           .toList(),
     );
   }
 
+  // The route line for a resumed walk, which only knows its routeId.
+  // TODO: replace MockRouteData with real geometry lookups, as in
+  // RouteInfoPage, which opens new walks.
+  List<GeoCoordinate> _loadRoutePath(String routeId) {
+    final points = MockRouteData.getRoutePoints(routeId);
+    if (mounted) setState(() => _routePoints = points);
+    return points.map((p) => GeoCoordinate(p.latitude, p.longitude)).toList();
+  }
+
   // Displays a notification when the user approaches or reaches a stop.
   void _onStopEvent(StopEvent event) {
     if (!mounted) return;
+
+    // A newly reached stop replaces a tapped notification's stop in the
+    // Current prompt box.
+    if (event.type == StopEventType.reached && _focusedStopId != null) {
+      setState(() => _focusedStopId = null);
+    }
 
     final message = event.type == StopEventType.reached
         ? 'You reached ${event.stop.stopName}!\n${event.stop.prompt}'
@@ -189,7 +297,10 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.route.name), // displays the name of the route
+          // displays the name of the route
+          title: Text(
+            widget.route?.name ?? _service.walk?.routeTitle ?? 'Your walk',
+          ),
           centerTitle: true,
           scrolledUnderElevation: 0,
         ),
@@ -363,7 +474,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
 
                 const SizedBox(height: 20),
 
-                _buildCurrentPrompt(context, progress.reachedCount),
+                _buildCurrentPrompt(context, _currentPromptStop(progress)),
 
                 const SizedBox(height: 20),
 
@@ -383,16 +494,27 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     );
   }
 
-  // Shows the prompt for the most recently reached stop.
+  // The stop whose prompt the Current prompt box shows: the one a tapped
+  // notification was about, otherwise the most recently reached stop.
+  // Read from the walk's progress so it also works for a resumed walk.
+  WalkedStop? _currentPromptStop(RouteProgressTracker progress) {
+    WalkedStop? focused;
+    WalkedStop? latest;
+    for (final stop in progress.stops) {
+      if (stop.stopId == _focusedStopId) focused = stop;
+      final reachedAt = stop.reachedAt;
+      if (reachedAt != null &&
+          (latest == null || reachedAt.isAfter(latest.reachedAt!))) {
+        latest = stop;
+      }
+    }
+    return focused ?? latest;
+  }
+
+  // Shows the prompt for [currentStop].
   // Before the first stop is reached, displays a placeholder.
-  Widget _buildCurrentPrompt(BuildContext context, int reachedCount) {
+  Widget _buildCurrentPrompt(BuildContext context, WalkedStop? currentStop) {
     final theme = Theme.of(context);
-
-    final reachedIndex = reachedCount - 1;
-
-    final currentStop = reachedIndex >= 0 && reachedIndex < widget.stops.length
-        ? widget.stops[reachedIndex]
-        : null;
 
     return Container(
       width: double.infinity,
@@ -415,7 +537,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
           const SizedBox(height: 6),
           Text(
             currentStop != null
-                ? '${currentStop.name}: ${currentStop.prompt}'
+                ? '${currentStop.stopName}: ${currentStop.prompt}'
                 : 'Reach your first stop to see its photo prompt.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: currentStop == null
@@ -442,8 +564,8 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
         Positioned.fill(
           child: GoogleMap(
             initialCameraPosition: CameraPosition(
-              target: widget.routePoints.isNotEmpty
-                  ? widget.routePoints.first
+              target: _routePoints.isNotEmpty
+                  ? _routePoints.first
                   : const LatLng(47.6553, -122.3035),
               zoom: 16,
             ),
@@ -468,10 +590,10 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
                 ),
             },
             polylines: {
-              if (widget.routePoints.isNotEmpty)
+              if (_routePoints.isNotEmpty)
                 Polyline(
                   polylineId: const PolylineId('route'),
-                  points: widget.routePoints,
+                  points: _routePoints,
                   color: color.withValues(alpha: 0.4),
                   width: 5,
                 ),
@@ -497,7 +619,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
             child: TextButton.icon(
               onPressed: _showStopsSheet,
               icon: const Icon(Icons.list, size: 18),
-              label: Text('Browse stops (${widget.stops.length})'),
+              label: Text('Browse stops (${progress.totalStops})'),
             ),
           ),
         ),
@@ -508,6 +630,10 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   // Opens the route stops in a rounded bottom sheet.
   Future<void> _showStopsSheet() {
     final theme = Theme.of(context);
+
+    // From the walk rather than widget.stops, which a resumed walk doesn't
+    // have.
+    final stops = _service.progress!.stops;
 
     return showModalBottomSheet<void>(
       context: context,
@@ -563,11 +689,11 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
                 Expanded(
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    itemCount: widget.stops.length,
+                    itemCount: stops.length,
                     separatorBuilder: (context, index) =>
                         const SizedBox(height: 10),
                     itemBuilder: (context, index) {
-                      final stop = widget.stops[index];
+                      final stop = stops[index];
 
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,7 +719,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
                               ),
                               child: ExpansionTile(
                                 title: Text(
-                                  stop.name,
+                                  stop.stopName,
                                   style: const TextStyle(fontSize: 14),
                                 ),
                                 trailing: const Icon(Icons.chevron_right),

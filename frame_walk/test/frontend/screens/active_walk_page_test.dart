@@ -9,6 +9,7 @@ import 'package:frame_walk/frontend/screens/active_walk_page.dart';
 import 'package:frame_walk/models/mock_route_data.dart';
 
 import '../../fakes/fake_location_source.dart';
+import '../../fakes/fake_stop_notifications.dart';
 
 void main() {
   const userId = 'user-1';
@@ -18,10 +19,12 @@ void main() {
   late FakeFirebaseFirestore firestore;
   late FakeLocationSource location;
   late WalkTrackingService service;
+  late FakeStopNotifications notifications;
 
   setUp(() async {
     firestore = FakeFirebaseFirestore();
     location = FakeLocationSource();
+    notifications = FakeStopNotifications();
     await firestore.collection('users').doc(userId).set({
       'username': 'walker',
       'routesCompleted': 0,
@@ -47,6 +50,7 @@ void main() {
                   stops: MockRouteData.getStops('1'),
                   routePoints: MockRouteData.getRoutePoints('1'),
                   trackingService: service,
+                  stopNotifications: notifications,
                   userId: userId,
                   showMap: false,
                 ),
@@ -76,6 +80,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('0 of 4 stops reached'), findsOneWidget);
     expect(location.isStreaming, isTrue);
+    expect(
+      notifications.permissionRequests,
+      1,
+      reason: 'retrying location must not ask for notifications again',
+    );
 
     // End the walk so its timers stop before the test finishes.
     await tester.runAsync(service.cancelWalk);

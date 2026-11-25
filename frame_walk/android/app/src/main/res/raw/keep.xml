@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The notification icon is only referenced by name from Dart
+     (stop_notification_service.dart, location_source.dart), so release
+     builds' resource shrinking can't see it's used. Without this, release
+     notifications fail silently. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_framewalk" />

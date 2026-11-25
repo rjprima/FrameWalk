@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
@@ -51,7 +52,8 @@ enum SignalStatus {
   // The user revoked location permission mid-walk.
   permissionRevoked,
 
-  // FrameWalk is off screen. Tracking is foreground-only, so it's paused.
+  // FrameWalk is off screen on a platform without background tracking (see
+  // [LocationSource.supportsBackgroundTracking]), so tracking is paused.
   pausedInBackground,
 }
 
@@ -65,6 +67,14 @@ class TrackingConfig {
   // Distance isn't added for jumps faster than this. Walking is ~1.4 m/s;
   // anything this fast is a GPS jump, not the user.
   final double maxPlausibleSpeedMetersPerSecond;
+
+  // Stop detection; see RouteProgressTracker. Arrival needs a reading at
+  // least as precise as [maxArrivalAccuracyMeters], which is stricter than
+  // [maxAcceptedAccuracyMeters] for recording the route.
+  final double approachRadiusMeters;
+  final double arrivalRadiusMeters;
+  final double maxArrivalAccuracyMeters;
+  final StopOrder stopOrder;
 
   // Points are saved in batches to reduce radio use and Firestore writes.
   final int flushEveryPoints;
@@ -81,6 +91,10 @@ class TrackingConfig {
     this.settings = const TrackingSettings(),
     this.maxAcceptedAccuracyMeters = 50,
     this.maxPlausibleSpeedMetersPerSecond = 12,
+    this.approachRadiusMeters = 75,
+    this.arrivalRadiusMeters = 25,
+    this.maxArrivalAccuracyMeters = 25,
+    this.stopOrder = StopOrder.sequential,
     this.flushEveryPoints = 10,
     this.flushInterval = const Duration(seconds: 30),
     this.signalLostAfter = const Duration(minutes: 2),
@@ -93,8 +107,13 @@ class TrackingConfig {
 // along the route, saves their location history, and stops listening when the
 // walk is completed or cancelled.
 //
-// Foreground only. When FrameWalk leaves the screen, call
-// [handleAppLifecycleState] and tracking pauses until the app returns.
+// Call [handleAppLifecycleState] when FrameWalk leaves or returns to the
+// screen. Where the location source supports it, tracking carries on in the
+// background on the same stream; otherwise it pauses until the app returns.
+//
+// The OS won't let an app start location updates from the background, so a
+// stream that stops while off screen (GPS turned off, permission revoked) is
+// only reopened once the user returns to FrameWalk.
 class WalkTrackingService extends ChangeNotifier {
   final LocationSource _source;
   final WalkRepository _walkRepository;
@@ -119,6 +138,7 @@ class WalkTrackingService extends ChangeNotifier {
   RouteProgressTracker? _progress;
   final List<LocationPoint> _points = [];
   final List<LocationPoint> _pending = [];
+  int _nextSequence = 0;
   LocationSample? _lastAccepted;
   DateTime? _lastFixReceivedAt;
   DateTime _lastFlushAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -140,6 +160,9 @@ class WalkTrackingService extends ChangeNotifier {
   List<LocationPoint> get recordedPoints => List.unmodifiable(_points);
   LocationSample? get lastLocation => _lastAccepted;
   bool get isInBackground => _inBackground;
+
+  // Whether this walk keeps recording while FrameWalk is off screen.
+  bool get tracksInBackground => _source.supportsBackgroundTracking;
 
   // True only while the location stream is open.
   bool get isListening => _positionSub != null;
@@ -183,6 +206,9 @@ class WalkTrackingService extends ChangeNotifier {
       routeTitle: routeTitle,
       stops: stops,
       startedAt: _now(),
+      trackingMode: tracksInBackground
+          ? backgroundTrackingMode
+          : foregroundTrackingMode,
     );
     try {
       await _persist(_walkRepository.createWalk(walk));
@@ -193,10 +219,104 @@ class WalkTrackingService extends ChangeNotifier {
     }
     if (_disposed) return readiness;
 
+    _beginTracking(walk, routePath: routePath);
+    return readiness;
+  }
+
+  // Picks up a walk that is still active in Firestore, for example after
+  // FrameWalk was closed or the OS ended it and the user tapped a stop
+  // notification. Nothing in memory is needed: the walk, its reached stops,
+  // and its recorded points are all loaded from storage (Firestore's
+  // on-device cache when offline).
+  //
+  // [routePathFor] gives the route line for the walk's routeId once it's
+  // known. Readiness is null when the walk couldn't be loaded or has already
+  // ended; the phase is then [WalkPhase.failed] with an [errorMessage].
+  Future<LocationReadiness?> resumeWalk({
+    required String userId,
+    required String walkId,
+    List<GeoCoordinate> Function(String routeId)? routePathFor,
+  }) async {
+    if (_phase == WalkPhase.starting ||
+        _phase == WalkPhase.active ||
+        _phase == WalkPhase.finishing) {
+      throw StateError('A walk is already in progress');
+    }
+    _errorMessage = null;
+    _setPhase(WalkPhase.starting);
+
+    final WalkedRoute? walk;
+    final List<LocationPoint> points;
+    try {
+      walk = await _walkRepository.fetchWalk(userId, walkId);
+      points = walk == null || !walk.isActive
+          ? const []
+          : await _walkRepository.fetchLocationPoints(userId, walkId);
+    } catch (error) {
+      if (_disposed) return null;
+      _errorMessage = "Couldn't load your walk. Check your connection.";
+      _setPhase(WalkPhase.failed);
+      return null;
+    }
+    if (_disposed) return null;
+    if (walk == null || !walk.isActive) {
+      // Shown in place of the walk, so the stale notification still leads
+      // somewhere sensible.
+      _walk = walk;
+      _errorMessage = walk == null
+          ? 'This walk is no longer available.'
+          : 'This walk is already finished. You can find it in Activity.';
+      _setPhase(WalkPhase.failed);
+      return null;
+    }
+
+    final readiness = await checkLocationReadiness(_source);
+    _readiness = readiness;
+    if (_disposed) return readiness;
+    if (readiness != LocationReadiness.ready) {
+      _setPhase(WalkPhase.blocked);
+      return readiness;
+    }
+
+    _beginTracking(
+      walk,
+      routePath: routePathFor?.call(walk.routeId) ?? const [],
+      restoredPoints: points,
+    );
+    return readiness;
+  }
+
+  void _beginTracking(
+    WalkedRoute walk, {
+    required List<GeoCoordinate> routePath,
+    List<LocationPoint> restoredPoints = const [],
+  }) {
     _walk = walk;
-    _progress = RouteProgressTracker(stops: walk.stops, routePath: routePath);
-    _points.clear();
+    // Stops already reached (reachedAt set) stay reached, so they can't be
+    // reached or notified about again.
+    _progress = RouteProgressTracker(
+      stops: walk.stops,
+      routePath: routePath,
+      approachRadiusMeters: config.approachRadiusMeters,
+      arrivalRadiusMeters: config.arrivalRadiusMeters,
+      maxArrivalAccuracyMeters: config.maxArrivalAccuracyMeters,
+      // The same limit that keeps GPS jumps out of the walked distance.
+      maxPlausibleSpeedMetersPerSecond: config.maxPlausibleSpeedMetersPerSecond,
+      stopOrder: config.stopOrder,
+    );
+    _points
+      ..clear()
+      ..addAll(restoredPoints);
+    // Point IDs come from their sequence number, so a resumed walk must carry
+    // on numbering after the saved points or it would overwrite them. The
+    // walk's count covers points saved but not loaded (e.g. a stale cache).
+    _nextSequence = math.max(
+      walk.locationPointCount,
+      restoredPoints.isEmpty ? 0 : restoredPoints.last.sequence + 1,
+    );
     _pending.clear();
+    // No previous reading: time spent with FrameWalk closed isn't counted as
+    // distance walked.
     _lastAccepted = null;
     _lastFixReceivedAt = null;
     _lastFlushAt = _now();
@@ -214,7 +334,6 @@ class WalkTrackingService extends ChangeNotifier {
       (_) => runHousekeeping(),
     );
     _notify();
-    return readiness;
   }
 
   // Stops tracking, saves the remaining points, and marks the walk
@@ -262,8 +381,10 @@ class WalkTrackingService extends ChangeNotifier {
     }
   }
 
-  // Foreground-only tracking: closes the location stream when FrameWalk
-  // leaves the screen and reopens it on return.
+  // With background tracking, the stream stays open off screen; returning
+  // re-checks access in case the user changed it in Settings meanwhile.
+  // Without it, the stream closes when FrameWalk leaves the screen and
+  // reopens on return.
   void handleAppLifecycleState(AppLifecycleState state) {
     if (_phase != WalkPhase.active) return;
     switch (state) {
@@ -272,17 +393,40 @@ class WalkTrackingService extends ChangeNotifier {
       case AppLifecycleState.detached:
         if (_inBackground) return;
         _inBackground = true;
-        _cancelPositionStream();
+        // Saved on the way out either way: the OS may end FrameWalk while
+        // it's off screen.
         _flush();
-        _signal = SignalStatus.pausedInBackground;
+        if (!tracksInBackground) {
+          _cancelPositionStream();
+          _signal = SignalStatus.pausedInBackground;
+        }
         _notify();
       case AppLifecycleState.resumed:
         if (!_inBackground) return;
         _inBackground = false;
-        resumeTracking();
+        _onReturnedToForeground();
       case AppLifecycleState.inactive:
         // Brief interruptions such as permission dialogs. Keep listening.
         break;
+    }
+  }
+
+  Future<void> _onReturnedToForeground() async {
+    if (!isListening) {
+      // Paused, or the stream stopped while off screen.
+      await resumeTracking();
+      return;
+    }
+    // Still recording. Reopening the stream would cause a gap (and restart
+    // Android's foreground service), so only check nothing was revoked.
+    final readiness = await checkLocationReadiness(_source, request: false);
+    if (_phase != WalkPhase.active || _inBackground || _disposed) return;
+    if (readiness == LocationReadiness.ready ||
+        readiness == LocationReadiness.approximateOnly) {
+      _readiness = readiness;
+      _notify();
+    } else {
+      await resumeTracking();
     }
   }
 
@@ -337,7 +481,8 @@ class WalkTrackingService extends ChangeNotifier {
         _signal == SignalStatus.acquiring ||
         _signal == SignalStatus.good ||
         _signal == SignalStatus.lowAccuracy;
-    if (!_inBackground && waitingForFix) {
+    final expectingFixes = !_inBackground || tracksInBackground;
+    if (expectingFixes && waitingForFix) {
       final since = _lastFixReceivedAt ?? _walk!.startedAt;
       if (now.difference(since) >= config.signalLostAfter) {
         _signal = SignalStatus.noRecentFix;
@@ -358,7 +503,8 @@ class WalkTrackingService extends ChangeNotifier {
   }
 
   void _onSample(LocationSample sample) {
-    if (_phase != WalkPhase.active || _inBackground) return;
+    if (_phase != WalkPhase.active) return;
+    if (_inBackground && !tracksInBackground) return;
     _lastFixReceivedAt = _now();
 
     if (sample.accuracyMeters > config.maxAcceptedAccuracyMeters) {
@@ -386,13 +532,13 @@ class WalkTrackingService extends ChangeNotifier {
     }
     _lastAccepted = sample;
 
-    final point = LocationPoint.fromSample(_points.length, sample);
+    final point = LocationPoint.fromSample(_nextSequence++, sample);
     _points.add(point);
     _pending.add(point);
 
     walk = walk.copyWith(
       distanceMeters: distance,
-      locationPointCount: _points.length,
+      locationPointCount: _nextSequence,
       lastLocationAt: sample.recordedAt,
     );
     final events = _progress!.update(sample);
@@ -440,6 +586,8 @@ class WalkTrackingService extends ChangeNotifier {
       _signal = SignalStatus.gpsDisabled;
       _notify();
     } else if (!_inBackground && !isListening) {
+      // Off screen, the stream can't be reopened (see class comment);
+      // _onReturnedToForeground does it instead.
       resumeTracking();
     }
   }

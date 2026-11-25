@@ -1,6 +1,7 @@
 import Flutter
 import GoogleMaps
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -19,6 +20,10 @@ import UIKit
       mapsKey = "MAPS_API_KEY_NOT_SET"
     }
     GMSServices.provideAPIKey(mapsKey)
+    // Lets flutter_local_notifications receive notification events (e.g. how
+    // to present one, and taps on it). FlutterAppDelegate forwards them to
+    // the plugin.
+    UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

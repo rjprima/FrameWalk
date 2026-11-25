@@ -75,6 +75,11 @@ abstract class LocationSource {
   // Emits true/false when the user turns device location services on or off.
   Stream<bool> serviceEnabledChanges();
 
+  // Whether [positionStream] keeps delivering readings after FrameWalk
+  // leaves the screen or the phone locks. Even when true, a stream can only
+  // be opened while the app is in the foreground.
+  bool get supportsBackgroundTracking;
+
   Future<bool> openAppSettings();
   Future<bool> openLocationSettings();
 }
@@ -110,13 +115,28 @@ Future<LocationReadiness> checkLocationReadiness(
   return LocationReadiness.ready;
 }
 
-// Foreground-only location using the geolocator plugin.
+// Location using the geolocator plugin.
 //
-// No foreground service and no background permission are configured, so the
-// OS stops or heavily throttles updates once FrameWalk leaves the screen.
-// WalkTrackingService pauses the stream itself when that happens.
+// On iOS and Android an open stream keeps running in the background, so a
+// walk is still tracked with the phone locked:
+// - iOS: the "location" UIBackgroundModes entry in Info.plist plus
+//   allowBackgroundLocationUpdates. "When In Use" permission is enough
+//   because updates always start while FrameWalk is on screen. iOS shows a
+//   blue location indicator while FrameWalk tracks in the background.
+// - Android: foregroundNotificationConfig makes geolocator run the stream in
+//   a foreground service (an ongoing notification the OS won't kill). The
+//   FOREGROUND_SERVICE_LOCATION permission covers this, so
+//   ACCESS_BACKGROUND_LOCATION isn't needed.
+// The stream only exists during an active walk, so cancelling it (walk
+// completed or cancelled) also stops background updates and the service.
 class GeolocatorLocationSource implements LocationSource {
   const GeolocatorLocationSource();
+
+  @override
+  bool get supportsBackgroundTracking =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
 
   @override
   Future<bool> isServiceEnabled() => Geolocator.isLocationServiceEnabled();
@@ -177,23 +197,39 @@ class GeolocatorLocationSource implements LocationSource {
         accuracy: LocationAccuracy.high,
         distanceFilter: distanceFilter,
         intervalDuration: settings.androidInterval,
-        // No foregroundNotificationConfig: background tracking is not
-        // enabled. See README "GPS tracking".
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'FrameWalk is recording your walk',
+          notificationText:
+              'Tracking your route until you finish or cancel the walk.',
+          notificationChannelName: 'Walk tracking',
+          notificationIcon: AndroidResource(
+            name: 'ic_stat_framewalk',
+            defType: 'drawable',
+          ),
+          // Keeps the CPU awake (not the screen) so readings are handled as
+          // they arrive rather than in a burst when the phone wakes, which
+          // would announce stops late. Held only while the stream is open.
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
       );
     }
     if (!kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.iOS ||
             defaultTargetPlatform == TargetPlatform.macOS)) {
+      final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
       return AppleSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: distanceFilter,
         activityType: ActivityType.fitness,
         // Off: users stand still at photo stops, and once iOS auto-pauses
-        // updates it doesn't resume them by itself. Tracking only runs while
-        // FrameWalk is on screen, so keeping GPS on costs little extra.
+        // updates it doesn't resume them by itself, which in the background
+        // would end tracking for the rest of the walk.
         pauseLocationUpdatesAutomatically: false,
-        allowBackgroundLocationUpdates: false,
-        showBackgroundLocationIndicator: false,
+        // iOS only; macOS has no background mode. Needs "location" in
+        // UIBackgroundModes, or geolocator leaves it off.
+        allowBackgroundLocationUpdates: isIOS,
+        showBackgroundLocationIndicator: isIOS,
       );
     }
     return LocationSettings(

@@ -31,7 +31,11 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FrameWalk lets you choose photos from your library to add to a completed walk. Your original photos are not changed.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>FrameWalk uses your location during a walk to follow your route and let you know when you reach each photo stop.</string>
+	<string>FrameWalk uses your location during a walk, including while your phone is locked, to follow your route and let you know when you reach each photo stop.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

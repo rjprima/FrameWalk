@@ -583,6 +583,8 @@ flutter test test/backend/services/auth_service_test.dart test/frontend/auth_flo
 
 Pressing **Start Walk** on a route opens the active-walk screen, which records where the user walks and tells them when they approach (within 75 m) or reach (within 25 m) each stop.
 
+**Arrival detection** (`RouteProgressTracker`, settings in `TrackingConfig`): stops are reached in route order. Each reading is checked against the next unreached stop only, and reaches at most one stop. The 25 m arrival radius widens by the reading's accuracy, up to 15 m. A reading only confirms arrival if its accuracy is 25 m or better, and if it isn't a jump faster than 12 m/s from the previous reading (a GPS glitch). Readings up to 50 m accuracy are still recorded for the route. Each stop is reached once, and the reached time is saved to Firestore immediately. `stopOrder: StopOrder.anyOrder` allows stops to be visited in any order instead.
+
 | Piece | File |
 | --- | --- |
 | Device location (the only code that uses `geolocator`) | `lib/backend/services/location_source.dart` |
@@ -593,13 +595,33 @@ Pressing **Start Walk** on a route opens the active-walk screen, which records w
 
 **Routes vs. Walked-Routes:** predefined routes are not stored with walks. A walk refers to its route by `routeId` and keeps its own copy of the stops. Only walks with `status: completed` are Walked-Routes.
 
-**Foreground only.** Location is recorded only while FrameWalk is open on screen. When the app goes to the background or the screen locks, tracking pauses and resumes when the user returns. The gap shows up in the location history timestamps. Background tracking would need, at minimum, a location foreground service (`FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION` permissions, `POST_NOTIFICATIONS` on Android 13+, and a `foregroundNotificationConfig` in `AndroidSettings`) on Android, and the `location` background mode on iOS. None of these are set up.
+**Background tracking.** On iOS and Android, a walk keeps recording while the phone is locked or FrameWalk is in the background, until the user finishes or cancels it. New walks are saved with `trackingMode: background` (older walks, and platforms without background tracking, use `foreground` and pause off screen).
 
-**Battery:** high accuracy with a 10 m distance filter (a 5 s minimum interval on Android), so no readings arrive while standing still. Points are saved to Firestore in batches of 10, or every 30 seconds.
+- **iOS:** `UIBackgroundModes` includes `location` in `ios/Runner/Info.plist` (the Xcode *Background Modes → Location updates* capability), and `AppleSettings.allowBackgroundLocationUpdates` is on. Only "While Using the App" permission is needed, because updates always start on screen. iOS shows a blue location indicator in the status bar while FrameWalk tracks in the background.
+- **Android:** `AndroidSettings.foregroundNotificationConfig` makes geolocator run updates in its foreground service, with a "FrameWalk is recording your walk" notification for the whole walk. The manifest declares `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` (Android 14+), and `WAKE_LOCK`. `ACCESS_BACKGROUND_LOCATION` is not needed and not declared.
+- Neither OS lets an app *start* location updates from the background. If location stops while FrameWalk is off screen (GPS turned off, permission revoked), tracking resumes only when the user reopens the app.
+- If the OS or the user ends FrameWalk entirely (e.g. swiping it away), tracking stops. Points recorded up to then are saved.
+
+**Battery:** high accuracy with a 10 m distance filter (a 5 s minimum interval on Android), so no readings arrive while standing still. iOS automatic pausing stays off because iOS wouldn't resume it. On Android a partial wake lock (CPU only, screen off) is held during the walk so stops are detected on time. All of this ends when the walk does. Points are saved to Firestore in batches of 10, or every 30 seconds, and whenever FrameWalk leaves the screen.
 
 **Permissions:** the app asks for "while using the app" location when a walk starts. If permission is denied, location services are off, or only approximate location is allowed, the screen explains why and links to the right settings. If the GPS signal drops mid-walk, the walk keeps going and a banner shows the problem.
 
 **Testing on an emulator:** open the emulator's **Extended controls (⋯) > Location** and set a point near a stop (for example Red Square, `47.6559, -122.3078`), or play back a route.
+
+## Stop Notifications
+
+When a stop is reached while the phone is locked or FrameWalk is in the background, the user gets a local notification: **"You've reached your next stop!"** with the stop name, its photography prompt, and "Open FrameWalk to see your progress." On screen, a SnackBar shows the same thing instead. Notifications are created on the device by [`flutter_local_notifications`](https://pub.dev/packages/flutter_local_notifications). No server or Firebase Cloud Messaging is involved.
+
+| Piece | File |
+| --- | --- |
+| Notification text, permission, display, duplicate prevention | `lib/backend/services/stop_notification_service.dart` |
+| Status-bar icon (white on transparent) | `android/app/src/main/res/drawable/ic_stat_framewalk.xml` |
+
+- **Permission** is asked once, when a walk starts. Saying no doesn't block the walk. Re-enable it in Settings > FrameWalk > Notifications.
+- **Duplicates:** each stop is reached once (`RouteProgressTracker`) and notified once per walk. Its notification ID is derived from the walk and stop, so a repeat would replace rather than stack.
+- **Android setup** required by the plugin: core-library desugaring and `compileSdk` 37 in `android/app/build.gradle.kts`, and AGP 9.1.1+ in `android/settings.gradle.kts`. `android/app/src/main/res/raw/keep.xml` stops release builds from removing the notification icon, which Dart only refers to by name.
+- **Tapping a notification** opens the walk screen with a card showing that stop and its prompt (`lib/frontend/navigation/stop_notification_router.dart`). The payload holds only `walkedRouteId` and `stopId`. If the walk screen is already open, the stop is shown there. Otherwise the walk is loaded from Firestore (`WalkTrackingService.resumeWalk`) and tracking carries on, numbering new points after the saved ones. This works the same after FrameWalk was closed, once Firebase has restored the signed-in user. A walk that has since finished or been deleted shows a message instead.
+- **iOS setup:** `AppDelegate.swift` sets the notification-centre delegate. No capability or `Info.plist` change is needed for local notifications. The Push Notifications capability is only for remote push.
 
 ## Walk Photos
 

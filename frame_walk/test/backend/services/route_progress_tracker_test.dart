@@ -22,14 +22,31 @@ void main() {
   );
   final t0 = DateTime(2026, 11, 9, 10);
 
-  // Moves [meters] north of a stop (1 degree of latitude ~ 111,195 m).
-  LocationSample northOf(WalkedStop stop, double meters, {double acc = 5}) =>
+  // ~10 m north of Red Square, so within both its and stop A's radius.
+  const stopNearA = WalkedStop(
+    stopId: 'near-a',
+    stopName: 'Red Square fountain',
+    latitude: 47.6559 + 10 / 111195,
+    longitude: -122.3078,
+  );
+
+  // Moves [meters] north of a stop (1 degree of latitude ~ 111,195 m),
+  // [seconds] after t0.
+  LocationSample northOf(
+    WalkedStop stop,
+    double meters, {
+    double acc = 5,
+    int seconds = 0,
+  }) =>
       sampleAt(
         stop.latitude + meters / 111195,
         stop.longitude,
-        t0,
+        t0.add(Duration(seconds: seconds)),
         accuracy: acc,
       );
+
+  List<StopEventType> types(List<StopEvent> events) =>
+      events.map((e) => e.type).toList();
 
   group('GeoMath', () {
     test('measures distance between coordinates', () {
@@ -107,8 +124,11 @@ void main() {
       );
     });
 
-    test('allows stops to be reached out of order', () {
-      final tracker = RouteProgressTracker(stops: [stopA, stopB]);
+    test('allows stops to be reached out of order when configured', () {
+      final tracker = RouteProgressTracker(
+        stops: [stopA, stopB],
+        stopOrder: StopOrder.anyOrder,
+      );
       tracker.update(northOf(stopB, 0));
       expect(tracker.proximityOf('b'), StopProximity.reached);
       expect(tracker.nextStop!.stopId, 'a');
@@ -140,6 +160,142 @@ void main() {
           stops: const [stopA],
           approachRadiusMeters: 10,
           arrivalRadiusMeters: 20,
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('arrival detection', () {
+    test('only the next stop can be reached, in route order', () {
+      final tracker = RouteProgressTracker(stops: [stopA, stopB]);
+
+      expect(
+        tracker.update(northOf(stopB, 0)),
+        isEmpty,
+        reason: 'B is not next, so it is neither approached nor reached',
+      );
+      expect(tracker.proximityOf('b'), StopProximity.upcoming);
+      expect(tracker.nextStop!.stopId, 'a');
+
+      expect(types(tracker.update(northOf(stopA, 0))), [StopEventType.reached]);
+      expect(types(tracker.update(northOf(stopB, 0))), [StopEventType.reached]);
+      expect(tracker.allStopsReached, isTrue);
+    });
+
+    test('one reading reaches at most one stop', () {
+      final tracker = RouteProgressTracker(stops: [stopA, stopNearA]);
+      final reading = northOf(stopA, 5);
+
+      final first = tracker.update(reading);
+      expect(types(first), [StopEventType.reached]);
+      expect(first.single.stop.stopId, 'a');
+      expect(tracker.proximityOf('near-a'), StopProximity.upcoming);
+
+      // The next reading at the same place reaches the following stop.
+      final second = tracker.update(northOf(stopA, 5, seconds: 10));
+      expect(types(second), [StopEventType.reached]);
+      expect(second.single.stop.stopId, 'near-a');
+    });
+
+    test('one reading reaches at most one stop in any order too', () {
+      final tracker = RouteProgressTracker(
+        stops: [stopA, stopNearA],
+        stopOrder: StopOrder.anyOrder,
+      );
+      final events = tracker.update(northOf(stopA, 5));
+      expect(
+        events.where((e) => e.type == StopEventType.reached),
+        hasLength(1),
+      );
+      expect(tracker.reachedCount, 1);
+    });
+
+    test('never reports the same arrival twice', () {
+      final tracker = RouteProgressTracker(stops: [stopA, stopB]);
+      final reached = <String>[];
+      for (var i = 0; i < 5; i++) {
+        for (final event in tracker.update(northOf(stopA, 2, seconds: i))) {
+          if (event.type == StopEventType.reached) {
+            reached.add(event.stop.stopId);
+          }
+        }
+      }
+      expect(reached, ['a']);
+    });
+
+    test('does not confirm arrival from an imprecise reading', () {
+      final tracker = RouteProgressTracker(stops: [stopA]);
+
+      // At the stop, but 30 m accuracy is worse than the 25 m limit.
+      expect(
+        types(tracker.update(northOf(stopA, 0, acc: 30))),
+        [StopEventType.approaching],
+        reason: 'an imprecise reading may still hint that the stop is near',
+      );
+      expect(tracker.proximityOf('a'), StopProximity.approaching);
+
+      expect(
+        types(tracker.update(northOf(stopA, 0, acc: 8, seconds: 5))),
+        [StopEventType.reached],
+      );
+    });
+
+    test('does not confirm arrival from a GPS jump', () {
+      final tracker = RouteProgressTracker(
+        stops: [stopA],
+        maxPlausibleSpeedMetersPerSecond: 12,
+      );
+      tracker.update(northOf(stopA, 500));
+
+      // 500 m in 10 s is 50 m/s: a glitch, not the user.
+      expect(
+        types(tracker.update(northOf(stopA, 0, seconds: 10))),
+        isNot(contains(StopEventType.reached)),
+      );
+      expect(tracker.proximityOf('a'), isNot(StopProximity.reached));
+
+      // A follow-up reading nearby, at walking pace, confirms it.
+      expect(
+        types(tracker.update(northOf(stopA, 3, seconds: 20))),
+        [StopEventType.reached],
+      );
+    });
+
+    test('accepts a long gap between readings as plausible', () {
+      final tracker = RouteProgressTracker(
+        stops: [stopA],
+        maxPlausibleSpeedMetersPerSecond: 12,
+      );
+      tracker.update(northOf(stopA, 500));
+      // 500 m in 5 minutes, e.g. after losing signal indoors.
+      expect(
+        types(tracker.update(northOf(stopA, 0, seconds: 300))),
+        [StopEventType.reached],
+      );
+    });
+
+    test('uses the configured arrival radius', () {
+      final tight = RouteProgressTracker(
+        stops: [stopA],
+        arrivalRadiusMeters: 10,
+        accuracyAllowanceMeters: 0,
+      );
+      expect(
+        types(tight.update(northOf(stopA, 20))),
+        [StopEventType.approaching],
+      );
+      expect(
+        types(tight.update(northOf(stopA, 8, seconds: 5))),
+        [StopEventType.reached],
+      );
+    });
+
+    test('rejects a non-positive arrival accuracy limit', () {
+      expect(
+        () => RouteProgressTracker(
+          stops: const [stopA],
+          maxArrivalAccuracyMeters: 0,
         ),
         throwsArgumentError,
       );
