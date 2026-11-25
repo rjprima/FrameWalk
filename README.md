@@ -23,16 +23,24 @@ lib/
 ├── firebase_options.dart
 ├── backend/
 │   ├── providers/
+│   │   ├── profile_provider.dart
 │   │   └── route_provider.dart
 │   ├── services/
 │   │   ├── auth_service.dart
+│   │   ├── bookmark_store.dart
+│   │   ├── image_validation.dart
 │   │   ├── location_source.dart
+│   │   ├── photo_storage.dart
 │   │   ├── prompt_generator.dart
 │   │   ├── route_manager.dart
 │   │   ├── route_progress_tracker.dart
+│   │   ├── stop_notification_service.dart
+│   │   ├── walk_photo_service.dart
 │   │   ├── walk_repository.dart
 │   │   └── walk_tracking_service.dart
 ├── frontend/
+│   ├── navigation/
+│   │   ├── stop_notification_router.dart
 │   ├── screens/
 │   │   ├── account_page.dart
 │   │   ├── active_walk_page.dart
@@ -43,43 +51,69 @@ lib/
 │   │   ├── landing_page.dart
 │   │   ├── login_page.dart
 │   │   ├── map_page.dart
-│   │   └── route_info_page.dart
+│   │   ├── route_info_page.dart
+│   │   ├── route_past_walks_page.dart
+│   │   ├── walk_gallery_page.dart
+│   │   └── walk_photo_editor_page.dart
 │   ├── theme/
 │   │   └── app_theme.dart
+│   ├── utils/
+│   │   ├── photo_picker.dart
 │   ├── widgets/
 │   │   ├── bottom_nav.dart
+│   │   ├── completed_walks_list.dart
 │   │   ├── route_card.dart
 │   │   ├── route_filter_chips.dart
-│   │   └── route_search_bar.dart
+│   │   ├── route_search_bar.dart
+│   │   └── walk_photo_thumbnail.dart
 ├── models/
 │   │   ├── location_point.dart
 │   │   ├── mock_route_data.dart
 │   │   ├── route_stop.dart
 │   │   ├── user_account.dart
+│   │   ├── walk_photo.dart
 │   │   └── walked_route.dart
 test/
 ├── backend/
 │   ├── providers/
+│   │   ├── bookmark_persistence_test.dart
+│   │   ├── profile_provider_test.dart
 │   │   └── route_provider_test.dart
 │   ├── services/
 │   │   ├── auth_service_test.dart
+│   │   ├── image_validation_test.dart
 │   │   ├── prompt_generator_test.dart
 │   │   ├── route_manager_test.dart
 │   │   ├── route_progress_tracker_test.dart
+│   │   ├── stop_notification_service_test.dart
+│   │   ├── walk_photo_service_test.dart
 │   │   ├── walk_repository_test.dart
 │   │   └── walk_tracking_service_test.dart
 ├── fakes/
-│   │   └── fake_location_source.dart
+│   │   ├── failing_firestore.dart
+│   │   ├── fake_location_source.dart
+│   │   ├── fake_photo_storage.dart
+│   │   └── fake_stop_notifications.dart
 ├── frontend/
+│   ├── navigation/
+│   │   └── stop_notification_router_test.dart
 │   ├── screens/
-│   │   └── active_walk_page_test.dart
+│   │   ├── active_walk_page_test.dart
+│   │   └── walk_photos_test.dart
 │   └── auth_flow_test.dart
+integration_test
+├── walk_photo_service_emulator_test.dart
 docs/
 ├── android-setup.md
 ├── coding-guidelines.md
 ├── firebase-setup.md
 ├── gps-tracking.md
 ├── ios-setup.md
+reports/
+├── 20261102.md
+├── 20261110.md
+├── 20261117.md
+├──20261124.md
 .gitignore
 LICENSE
 README.md
