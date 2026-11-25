@@ -172,20 +172,24 @@ class LocalStopNotificationService implements StopNotificationService {
   Future<bool> initialize({void Function(String? payload)? onTap}) {
     return _initialized ??= () async {
       try {
-        return await _plugin.initialize(
-              settings: const InitializationSettings(
-                android: AndroidInitializationSettings(_androidIcon),
-                iOS: DarwinInitializationSettings(
-                  requestAlertPermission: false,
-                  requestBadgePermission: false,
-                  requestSoundPermission: false,
-                ),
-              ),
-              onDidReceiveNotificationResponse: onTap == null
-                  ? null
-                  : (response) => onTap(response.payload),
-            ) ??
-            false;
+        // The result isn't checked: on iOS it says whether the permissions
+        // requested by the flags below were granted, not whether
+        // initialization worked, so with every flag off it is always false.
+        // A failed initialization throws instead.
+        await _plugin.initialize(
+          settings: const InitializationSettings(
+            android: AndroidInitializationSettings(_androidIcon),
+            iOS: DarwinInitializationSettings(
+              requestAlertPermission: false,
+              requestBadgePermission: false,
+              requestSoundPermission: false,
+            ),
+          ),
+          onDidReceiveNotificationResponse: onTap == null
+              ? null
+              : (response) => onTap(response.payload),
+        );
+        return true;
       } catch (error) {
         debugPrint('FrameWalk: notifications unavailable: $error');
         _initialized = null;
@@ -211,23 +215,35 @@ class LocalStopNotificationService implements StopNotificationService {
 
   @override
   Future<bool> requestPermission() async {
-    if (!await _ensureInitialized()) return false;
+    if (!await _ensureInitialized()) {
+      debugPrint('FrameWalk: notification permission not requested: '
+          'notifications are not initialized');
+      return false;
+    }
     try {
+      bool? allowed;
       if (defaultTargetPlatform == TargetPlatform.android) {
         // Android 13+ shows a prompt; earlier versions allow by default.
-        return await _plugin
-                .resolvePlatformSpecificImplementation<
-                    AndroidFlutterLocalNotificationsPlugin>()
-                ?.requestNotificationsPermission() ??
-            false;
+        final android = _plugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        if (android == null) {
+          debugPrint('FrameWalk: notification permission not requested: '
+              'no Android notifications plugin');
+          return false;
+        }
+        allowed = await android.requestNotificationsPermission();
+      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final ios = _plugin.resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+        if (ios == null) {
+          debugPrint('FrameWalk: notification permission not requested: '
+              'no iOS notifications plugin');
+          return false;
+        }
+        allowed = await ios.requestPermissions(alert: true, sound: true);
       }
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        return await _plugin
-                .resolvePlatformSpecificImplementation<
-                    IOSFlutterLocalNotificationsPlugin>()
-                ?.requestPermissions(alert: true, sound: true) ??
-            false;
-      }
+      debugPrint('FrameWalk: notification permission allowed: $allowed');
+      return allowed ?? false;
     } catch (error) {
       debugPrint('FrameWalk: notification permission failed: $error');
     }
