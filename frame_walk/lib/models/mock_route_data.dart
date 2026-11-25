@@ -9,6 +9,71 @@ class MockRouteData {
   // Default map center (UW campus).
   static const LatLng uwCampus = LatLng(47.6553, -122.3035);
 
+  static const List<LatLng> route1points = [
+    LatLng(47.6569804,-122.3068372),
+    LatLng(47.6570256,-122.3070459),
+    LatLng(47.6568477,-122.3072495),
+    LatLng(47.656719,-122.3075497),
+    LatLng(47.6566654,-122.3075872),
+    LatLng(47.6566658,-122.3079091),
+    LatLng(47.656742,-122.3080646),
+    LatLng(47.6568468,-122.3081667),
+    LatLng(47.6569046,-122.3081294),
+    LatLng(47.6570492,-122.3080815),
+    LatLng(47.6573673,-122.307621),
+    LatLng(47.657465,-122.3076172),
+    LatLng(47.6575051,-122.3075883),
+    LatLng(47.6575281,-122.3075364),
+    LatLng(47.6575186,-122.3073397),
+    LatLng(47.6578429,-122.3068925),
+    LatLng(47.6578095,-122.3065393),
+    LatLng(47.6578122,-122.3064596),
+    LatLng(47.6572678,-122.3072517),
+  ];
+
+  static const List<RouteStop> route1stops = [
+    RouteStop(
+      id: 'quad_stop_1',
+      name: 'the quad',
+      prompt: 'Capture an interesting pattern in the surrounding architecture.',
+      latitude: 47.65698,
+      longitude: -122.30683,
+    ),
+    RouteStop(
+      id: 'quad_stop_2',
+      name: 'the quad',
+      prompt: 'Capture an interesting pattern in the surrounding architecture.',
+      latitude: 47.65674,
+      longitude: -122.30806,
+    ),
+    RouteStop(
+      id: 'quad_stop_3',
+      name: 'the quad',
+      prompt: 'Capture an interesting pattern in the surrounding architecture.',
+      latitude: 47.6575,
+      longitude: -122.30758,
+    ),
+    RouteStop(
+      id: 'quad_stop_4',
+      name: 'the quad',
+      prompt: 'Capture an interesting pattern in the surrounding architecture.',
+      latitude: 47.65781,
+      longitude: -122.30645,
+    ),
+    RouteStop(
+      id: 'quad_stop_5',
+      name: 'the quad',
+      prompt: 'Capture an interesting pattern in the surrounding architecture.',
+      latitude: 47.65726,
+      longitude: -122.30725,
+    ),
+  ];
+
+  static const Route route1 = Route(
+    route_stops: route1stops,
+    path: route1points
+  );
+
   // RED SQUARE WALK
   static const List<RouteStop> redSquareStops = [
     RouteStop(
@@ -335,11 +400,12 @@ class MockRouteData {
     ),
   ];
 
-  // GET STOPS FOR A ROUTE
-  static List<RouteStop> getStops(String routeId) {
+  // GET STOPS FOR A ROUTE List<RouteStop>
+  static Route getStops(String routeId) {
     switch (routeId) {
       case '1':
-        return redSquareStops;
+        return route1;
+        /*return redSquareStops;
       case '2':
         return uwNatureStops;
       case '3':
@@ -349,9 +415,9 @@ class MockRouteData {
       case 'map-quad':
         return quadLoopStops;
       case 'map-drumheller':
-        return drumhellerLoopStops;
+        return drumhellerLoopStops;*/
       default:
-        return [];
+        return route1;
     }
   }
 
