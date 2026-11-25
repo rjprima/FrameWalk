@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Simulated walk of the Red Square Walk route (MockRouteData route '1') for
+  the iOS Simulator. Follows redSquareRoutePoints at walking pace (1.4 m/s),
+  pausing 15 s at each stop: Red Square, Suzzallo Library, Drumheller
+  Fountain, Kane Hall, then back to Red Square. About 763 m, 10 min.
+
+  Use with `flutter run` (no Xcode needed):
+    python3 ios/SimulatedLocations/simulate_walk.py ios/SimulatedLocations/red_square_walk.gpx
+  Or, only while the app was launched from Xcode's Run button:
+  Debug > Simulate Location > Add GPX File to Workspace... and pick this file.
+  Regenerate if the route's coordinates in mock_route_data.dart change.
+-->
+<gpx version="1.1" creator="FrameWalk" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="47.655900" lon="-122.307800">
+    <name>Red Square</name>
+    <time>2026-01-01T12:00:00Z</time>
+  </wpt>
+  <wpt lat="47.655900" lon="-122.307800">
+    <time>2026-01-01T12:00:15Z</time>
+  </wpt>
+  <wpt lat="47.655891" lon="-122.307900">
+    <time>2026-01-01T12:00:20Z</time>
+  </wpt>
+  <wpt lat="47.655882" lon="-122.308000">
+    <time>2026-01-01T12:00:25Z</time>
+  </wpt>
+  <wpt lat="47.655873" lon="-122.308100">
+    <time>2026-01-01T12:00:31Z</time>
+  </wpt>
+  <wpt lat="47.655864" lon="-122.308200">
+    <time>2026-01-01T12:00:36Z</time>
+  </wpt>
+  <wpt lat="47.655855" lon="-122.308300">
+    <time>2026-01-01T12:00:41Z</time>
+  </wpt>
+  <wpt lat="47.655845" lon="-122.308400">
+    <time>2026-01-01T12:00:47Z</time>
+  </wpt>
+  <wpt lat="47.655836" lon="-122.308500">
+    <time>2026-01-01T12:00:52Z</time>
+  </wpt>
+  <wpt lat="47.655827" lon="-122.308600">
+    <time>2026-01-01T12:00:58Z</time>
+  </wpt>
+  <wpt lat="47.655818" lon="-122.308700">
+    <time>2026-01-01T12:01:03Z</time>
+  </wpt>
+  <wpt lat="47.655809" lon="-122.308800">
+    <time>2026-01-01T12:01:08Z</time>
+  </wpt>
+  <wpt lat="47.655800" lon="-122.308900">
+    <time>2026-01-01T12:01:14Z</time>
+  </wpt>
+  <wpt lat="47.655758" lon="-122.308983">
+    <time>2026-01-01T12:01:19Z</time>
+  </wpt>
+  <wpt lat="47.655717" lon="-122.309067">
+    <time>2026-01-01T12:01:25Z</time>
+  </wpt>
+  <wpt lat="47.655675" lon="-122.309150">
+    <time>2026-01-01T12:01:31Z</time>
+  </wpt>
+  <wpt lat="47.655633" lon="-122.309233">
+    <time>2026-01-01T12:01:36Z</time>
+  </wpt>
+  <wpt lat="47.655592" lon="-122.309317">
+    <time>2026-01-01T12:01:42Z</time>
+  </wpt>
+  <wpt lat="47.655550" lon="-122.309400">
+    <time>2026-01-01T12:01:47Z</time>
+  </wpt>
+  <wpt lat="47.655508" lon="-122.309483">
+    <time>2026-01-01T12:01:53Z</time>
+  </wpt>
+  <wpt lat="47.655467" lon="-122.309567">
+    <time>2026-01-01T12:01:58Z</time>
+  </wpt>
+  <wpt lat="47.655425" lon="-122.309650">
+    <time>2026-01-01T12:02:04Z</time>
+  </wpt>
+  <wpt lat="47.655383" lon="-122.309733">
+    <time>2026-01-01T12:02:09Z</time>
+  </wpt>
+  <wpt lat="47.655342" lon="-122.309817">
+    <time>2026-01-01T12:02:15Z</time>
+  </wpt>
+  <wpt lat="47.655300" lon="-122.309900">
+    <name>Suzzallo Library</name>
+    <time>2026-01-01T12:02:21Z</time>
+  </wpt>
+  <wpt lat="47.655300" lon="-122.309900">
+    <time>2026-01-01T12:02:36Z</time>
+  </wpt>
+  <wpt lat="47.655260" lon="-122.309813">
+    <time>2026-01-01T12:02:41Z</time>
+  </wpt>
+  <wpt lat="47.655220" lon="-122.309727">
+    <time>2026-01-01T12:02:47Z</time>
+  </wpt>
+  <wpt lat="47.655180" lon="-122.309640">
+    <time>2026-01-01T12:02:52Z</time>
+  </wpt>
+  <wpt lat="47.655140" lon="-122.309553">
+    <time>2026-01-01T12:02:58Z</time>
+  </wpt>
+  <wpt lat="47.655100" lon="-122.309467">
+    <time>2026-01-01T12:03:04Z</time>
+  </wpt>
+  <wpt lat="47.655060" lon="-122.309380">
+    <time>2026-01-01T12:03:09Z</time>
+  </wpt>
+  <wpt lat="47.655020" lon="-122.309293">
+    <time>2026-01-01T12:03:15Z</time>
+  </wpt>
+  <wpt lat="47.654980" lon="-122.309207">
+    <time>2026-01-01T12:03:20Z</time>
+  </wpt>
+  <wpt lat="47.654940" lon="-122.309120">
+    <time>2026-01-01T12:03:26Z</time>
+  </wpt>
+  <wpt lat="47.654900" lon="-122.309033">
+    <time>2026-01-01T12:03:32Z</time>
+  </wpt>
+  <wpt lat="47.654860" lon="-122.308947">
+    <time>2026-01-01T12:03:37Z</time>
+  </wpt>
+  <wpt lat="47.654820" lon="-122.308860">
+    <time>2026-01-01T12:03:43Z</time>
+  </wpt>
+  <wpt lat="47.654780" lon="-122.308773">
+    <time>2026-01-01T12:03:49Z</time>
+  </wpt>
+  <wpt lat="47.654740" lon="-122.308687">
+    <time>2026-01-01T12:03:54Z</time>
+  </wpt>
+  <wpt lat="47.654700" lon="-122.308600">
+    <time>2026-01-01T12:04:00Z</time>
+  </wpt>
+  <wpt lat="47.654688" lon="-122.308500">
+    <time>2026-01-01T12:04:05Z</time>
+  </wpt>
+  <wpt lat="47.654675" lon="-122.308400">
+    <time>2026-01-01T12:04:11Z</time>
+  </wpt>
+  <wpt lat="47.654663" lon="-122.308300">
+    <time>2026-01-01T12:04:16Z</time>
+  </wpt>
+  <wpt lat="47.654650" lon="-122.308200">
+    <time>2026-01-01T12:04:22Z</time>
+  </wpt>
+  <wpt lat="47.654637" lon="-122.308100">
+    <time>2026-01-01T12:04:27Z</time>
+  </wpt>
+  <wpt lat="47.654625" lon="-122.308000">
+    <time>2026-01-01T12:04:32Z</time>
+  </wpt>
+  <wpt lat="47.654612" lon="-122.307900">
+    <time>2026-01-01T12:04:38Z</time>
+  </wpt>
+  <wpt lat="47.654600" lon="-122.307800">
+    <time>2026-01-01T12:04:43Z</time>
+  </wpt>
+  <wpt lat="47.654587" lon="-122.307700">
+    <time>2026-01-01T12:04:49Z</time>
+  </wpt>
+  <wpt lat="47.654575" lon="-122.307600">
+    <time>2026-01-01T12:04:54Z</time>
+  </wpt>
+  <wpt lat="47.654562" lon="-122.307500">
+    <time>2026-01-01T12:05:00Z</time>
+  </wpt>
+  <wpt lat="47.654550" lon="-122.307400">
+    <time>2026-01-01T12:05:05Z</time>
+  </wpt>
+  <wpt lat="47.654537" lon="-122.307300">
+    <time>2026-01-01T12:05:11Z</time>
+  </wpt>
+  <wpt lat="47.654525" lon="-122.307200">
+    <time>2026-01-01T12:05:16Z</time>
+  </wpt>
+  <wpt lat="47.654512" lon="-122.307100">
+    <time>2026-01-01T12:05:21Z</time>
+  </wpt>
+  <wpt lat="47.654500" lon="-122.307000">
+    <name>Drumheller Fountain</name>
+    <time>2026-01-01T12:05:27Z</time>
+  </wpt>
+  <wpt lat="47.654500" lon="-122.307000">
+    <time>2026-01-01T12:05:42Z</time>
+  </wpt>
+  <wpt lat="47.654544" lon="-122.307081">
+    <time>2026-01-01T12:05:47Z</time>
+  </wpt>
+  <wpt lat="47.654587" lon="-122.307163">
+    <time>2026-01-01T12:05:53Z</time>
+  </wpt>
+  <wpt lat="47.654631" lon="-122.307244">
+    <time>2026-01-01T12:05:59Z</time>
+  </wpt>
+  <wpt lat="47.654675" lon="-122.307325">
+    <time>2026-01-01T12:06:04Z</time>
+  </wpt>
+  <wpt lat="47.654719" lon="-122.307406">
+    <time>2026-01-01T12:06:10Z</time>
+  </wpt>
+  <wpt lat="47.654762" lon="-122.307488">
+    <time>2026-01-01T12:06:15Z</time>
+  </wpt>
+  <wpt lat="47.654806" lon="-122.307569">
+    <time>2026-01-01T12:06:21Z</time>
+  </wpt>
+  <wpt lat="47.654850" lon="-122.307650">
+    <time>2026-01-01T12:06:26Z</time>
+  </wpt>
+  <wpt lat="47.654894" lon="-122.307731">
+    <time>2026-01-01T12:06:32Z</time>
+  </wpt>
+  <wpt lat="47.654938" lon="-122.307812">
+    <time>2026-01-01T12:06:38Z</time>
+  </wpt>
+  <wpt lat="47.654981" lon="-122.307894">
+    <time>2026-01-01T12:06:43Z</time>
+  </wpt>
+  <wpt lat="47.655025" lon="-122.307975">
+    <time>2026-01-01T12:06:49Z</time>
+  </wpt>
+  <wpt lat="47.655069" lon="-122.308056">
+    <time>2026-01-01T12:06:54Z</time>
+  </wpt>
+  <wpt lat="47.655113" lon="-122.308138">
+    <time>2026-01-01T12:07:00Z</time>
+  </wpt>
+  <wpt lat="47.655156" lon="-122.308219">
+    <time>2026-01-01T12:07:05Z</time>
+  </wpt>
+  <wpt lat="47.655200" lon="-122.308300">
+    <time>2026-01-01T12:07:11Z</time>
+  </wpt>
+  <wpt lat="47.655262" lon="-122.308354">
+    <time>2026-01-01T12:07:17Z</time>
+  </wpt>
+  <wpt lat="47.655323" lon="-122.308408">
+    <time>2026-01-01T12:07:22Z</time>
+  </wpt>
+  <wpt lat="47.655385" lon="-122.308462">
+    <time>2026-01-01T12:07:28Z</time>
+  </wpt>
+  <wpt lat="47.655446" lon="-122.308515">
+    <time>2026-01-01T12:07:34Z</time>
+  </wpt>
+  <wpt lat="47.655508" lon="-122.308569">
+    <time>2026-01-01T12:07:39Z</time>
+  </wpt>
+  <wpt lat="47.655569" lon="-122.308623">
+    <time>2026-01-01T12:07:45Z</time>
+  </wpt>
+  <wpt lat="47.655631" lon="-122.308677">
+    <time>2026-01-01T12:07:51Z</time>
+  </wpt>
+  <wpt lat="47.655692" lon="-122.308731">
+    <time>2026-01-01T12:07:56Z</time>
+  </wpt>
+  <wpt lat="47.655754" lon="-122.308785">
+    <time>2026-01-01T12:08:02Z</time>
+  </wpt>
+  <wpt lat="47.655815" lon="-122.308838">
+    <time>2026-01-01T12:08:08Z</time>
+  </wpt>
+  <wpt lat="47.655877" lon="-122.308892">
+    <time>2026-01-01T12:08:13Z</time>
+  </wpt>
+  <wpt lat="47.655938" lon="-122.308946">
+    <time>2026-01-01T12:08:19Z</time>
+  </wpt>
+  <wpt lat="47.656000" lon="-122.309000">
+    <name>Kane Hall</name>
+    <time>2026-01-01T12:08:25Z</time>
+  </wpt>
+  <wpt lat="47.656000" lon="-122.309000">
+    <time>2026-01-01T12:08:40Z</time>
+  </wpt>
+  <wpt lat="47.656043" lon="-122.308914">
+    <time>2026-01-01T12:08:45Z</time>
+  </wpt>
+  <wpt lat="47.656086" lon="-122.308829">
+    <time>2026-01-01T12:08:51Z</time>
+  </wpt>
+  <wpt lat="47.656129" lon="-122.308743">
+    <time>2026-01-01T12:08:57Z</time>
+  </wpt>
+  <wpt lat="47.656171" lon="-122.308657">
+    <time>2026-01-01T12:09:03Z</time>
+  </wpt>
+  <wpt lat="47.656214" lon="-122.308571">
+    <time>2026-01-01T12:09:08Z</time>
+  </wpt>
+  <wpt lat="47.656257" lon="-122.308486">
+    <time>2026-01-01T12:09:14Z</time>
+  </wpt>
+  <wpt lat="47.656300" lon="-122.308400">
+    <time>2026-01-01T12:09:20Z</time>
+  </wpt>
+  <wpt lat="47.656250" lon="-122.308325">
+    <time>2026-01-01T12:09:25Z</time>
+  </wpt>
+  <wpt lat="47.656200" lon="-122.308250">
+    <time>2026-01-01T12:09:31Z</time>
+  </wpt>
+  <wpt lat="47.656150" lon="-122.308175">
+    <time>2026-01-01T12:09:37Z</time>
+  </wpt>
+  <wpt lat="47.656100" lon="-122.308100">
+    <time>2026-01-01T12:09:42Z</time>
+  </wpt>
+  <wpt lat="47.656050" lon="-122.308025">
+    <time>2026-01-01T12:09:48Z</time>
+  </wpt>
+  <wpt lat="47.656000" lon="-122.307950">
+    <time>2026-01-01T12:09:54Z</time>
+  </wpt>
+  <wpt lat="47.655950" lon="-122.307875">
+    <time>2026-01-01T12:09:59Z</time>
+  </wpt>
+  <wpt lat="47.655900" lon="-122.307800">
+    <name>Back at Red Square</name>
+    <time>2026-01-01T12:10:05Z</time>
+  </wpt>
+  <wpt lat="47.655900" lon="-122.307800">
+    <time>2026-01-01T12:10:20Z</time>
+  </wpt>
+</gpx>
