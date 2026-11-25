@@ -116,7 +116,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     );
   }
 
-  // Displays a larger notification when the user approaches or reaches a stop.
+  // Displays a notification when the user approaches or reaches a stop.
   void _onStopEvent(StopEvent event) {
     if (!mounted) return;
 
@@ -181,7 +181,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     final phase = _service.phase;
 
     return PopScope(
-      canPop: phase != WalkPhase.active && phase != WalkPhase.finishing,
+      canPop: phase != WalkPhase.active && phase != WalkPhase.finishing, // can go back to the previous screen if the walk isn't active or finishing
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && phase == WalkPhase.active) {
           _confirmCancel();
@@ -189,7 +189,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.route.name),
+          title: Text(widget.route.name), // displays the name of the route
           centerTitle: true,
           scrolledUnderElevation: 0,
         ),
@@ -198,6 +198,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     );
   }
 
+  // builds the main body of the active walk page
   Widget _buildBody(BuildContext context) {
     final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
 
@@ -323,9 +324,24 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
               children: [
                 const SizedBox(height: 5),
 
-                Text(
-                  '${progress.reachedCount} of ${progress.totalStops} stops reached',
-                  style: Theme.of(context).textTheme.titleMedium,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${progress.reachedCount} of ${progress.totalStops} stops reached',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: finishing ? null : _confirmCancel,
+                      icon: const Icon(Icons.close, size: 18),
+                      label: const Text('Cancel walk'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 10),
@@ -357,13 +373,6 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
                   child: ElevatedButton(
                     onPressed: finishing ? null : _finish,
                     child: Text(finishing ? 'Saving...' : 'Finish walk'),
-                  ),
-                ),
-
-                Center(
-                  child: TextButton(
-                    onPressed: finishing ? null : _confirmCancel,
-                    child: const Text('Cancel walk'),
                   ),
                 ),
               ],
