@@ -171,18 +171,17 @@ class GeolocatorLocationSource implements LocationSource {
   Stream<LocationSample> positionStream(TrackingSettings settings) {
     return Geolocator.getPositionStream(
       locationSettings: _platformSettings(settings),
-    ).map(_toSample).handleError(
-      (Object error, StackTrace stackTrace) {
-        throw _mapError(error);
-      },
-    );
+    ).map(_toSample).handleError((Object error, StackTrace stackTrace) {
+      throw _mapError(error);
+    });
   }
 
   @override
   Stream<bool> serviceEnabledChanges() {
     if (kIsWeb) return const Stream.empty();
-    return Geolocator.getServiceStatusStream()
-        .map((status) => status == ServiceStatus.enabled);
+    return Geolocator.getServiceStatusStream().map(
+      (status) => status == ServiceStatus.enabled,
+    );
   }
 
   @override
@@ -240,13 +239,13 @@ class GeolocatorLocationSource implements LocationSource {
   }
 
   static LocationSample _toSample(Position position) => LocationSample(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracyMeters: position.accuracy,
-        recordedAt: position.timestamp,
-        // Negative or zero speeds mean "unknown" on most devices.
-        speedMetersPerSecond: position.speed > 0 ? position.speed : null,
-      );
+    latitude: position.latitude,
+    longitude: position.longitude,
+    accuracyMeters: position.accuracy,
+    recordedAt: position.timestamp,
+    // Negative or zero speeds mean "unknown" on most devices.
+    speedMetersPerSecond: position.speed > 0 ? position.speed : null,
+  );
 
   static LocationPermissionStatus _mapPermission(LocationPermission value) {
     switch (value) {

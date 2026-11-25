@@ -55,9 +55,8 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
     } on AuthFailure catch (failure) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(failure.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(failure.message)));
     }
   }
 
@@ -186,7 +185,10 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isSubmitting ? null : _createAccount,
-                      child: const Text('Create Account', style: TextStyle(fontSize: 16)),
+                      child: const Text(
+                        'Create Account',
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                   ),
 

@@ -144,16 +144,23 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Lock the phone and reach the first stop.
+      // Lock the phone and reach the first two stops.
+      final start = DateTime.now();
       tester.binding
           .handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      location.emit(sampleAt(firstStop.latitude, firstStop.longitude, start));
+      await tester.pump();
       location.emit(
-        sampleAt(firstStop.latitude, firstStop.longitude, DateTime.now()),
+        sampleAt(
+          stops[1].latitude,
+          stops[1].longitude,
+          start.add(const Duration(minutes: 5)),
+        ),
       );
       await tester.pump();
-      expect(notifications.shown, hasLength(1));
+      expect(notifications.shown, hasLength(2));
       final walkId = service.walk!.id;
 
       // Tapping brings FrameWalk back, then the tap is delivered.
@@ -161,20 +168,32 @@ void main() {
       tester.binding
           .handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      // The tap is for the first stop's notification, not the latest one.
       router.handleTap(tapPayload(walkId));
       await tester.pumpAndSettle();
 
       expect(find.byType(ActiveWalkPage), findsOneWidget);
       expect(services, hasLength(1), reason: 'no second tracking service');
       expect(location.streamsOpened, 1, reason: 'tracking was not restarted');
-      expect(find.text('You reached ${firstStop.name}'), findsOneWidget);
-      expect(find.text(firstStop.prompt), findsOneWidget);
+      expect(
+        find.text('${firstStop.name}: ${firstStop.prompt}'),
+        findsOneWidget,
+        reason: "the Current prompt box shows the tapped notification's stop",
+      );
+      expect(find.text('2 of 4 stops reached'), findsOneWidget);
 
-      // Dismissing the stop card leaves the walk going.
-      await tester.tap(find.byTooltip('Dismiss'));
-      await tester.pumpAndSettle();
-      expect(find.text('You reached ${firstStop.name}'), findsNothing);
-      expect(find.text('1 of 4 stops reached'), findsOneWidget);
+      // Reaching the next stop moves the box on to it.
+      location.emit(
+        sampleAt(
+          stops[2].latitude,
+          stops[2].longitude,
+          start.add(const Duration(minutes: 10)),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('3 of 4 stops reached'), findsOneWidget);
+      expect(find.text('${stops[2].name}: ${stops[2].prompt}'), findsOneWidget);
+      expect(find.text('${firstStop.name}: ${firstStop.prompt}'), findsNothing);
 
       await endWalks(tester);
     });
@@ -249,8 +268,10 @@ void main() {
       expect(location.isStreaming, isTrue);
       expect(find.text('Red Square Walk'), findsOneWidget);
       expect(find.text('1 of 4 stops reached'), findsOneWidget);
-      expect(find.text('You reached ${firstStop.name}'), findsOneWidget);
-      expect(find.text(firstStop.prompt), findsOneWidget);
+      expect(
+        find.text('${firstStop.name}: ${firstStop.prompt}'),
+        findsOneWidget,
+      );
       expect(service.recordedPoints, hasLength(2));
 
       await endWalks(tester);

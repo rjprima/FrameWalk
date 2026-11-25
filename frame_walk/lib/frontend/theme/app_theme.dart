@@ -1,9 +1,7 @@
-
 import 'package:flutter/material.dart';
 
 // Theme to be used for entire app
 class AppTheme {
-
   static const teal = Color(0xFF195B50);
   static const cream = Color(0xFFFAF8F2);
   static const black = Color(0xFF171717);
@@ -12,17 +10,15 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       scaffoldBackgroundColor: cream,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: teal,
-        surface: cream,
-      ),
+      colorScheme: ColorScheme.fromSeed(seedColor: teal, surface: cream),
       textTheme: const TextTheme(
-        displayLarge: TextStyle( // For landing page title
+        displayLarge: TextStyle(
+          // For landing page title
           fontSize: 48,
           fontWeight: FontWeight.bold,
           color: black,
         ),
-        headlineMedium: TextStyle( 
+        headlineMedium: TextStyle(
           fontSize: 32,
           fontWeight: FontWeight.bold,
           color: black,
@@ -32,18 +28,14 @@ class AppTheme {
           fontWeight: FontWeight.bold,
           color: black,
         ),
-        bodySmall: TextStyle(
-          fontSize: 16
-        )
+        bodySmall: TextStyle(fontSize: 16),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: teal,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 55),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
       ),
       inputDecorationTheme: const InputDecorationTheme(

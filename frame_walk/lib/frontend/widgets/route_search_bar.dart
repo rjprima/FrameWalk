@@ -1,13 +1,9 @@
-
 import 'package:flutter/material.dart';
 
 class RouteSearchBar extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
-  const RouteSearchBar({
-    super.key,
-    required this.onChanged,
-  });
+  const RouteSearchBar({super.key, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -22,9 +18,7 @@ class RouteSearchBar extends StatelessWidget {
         hintStyle: const TextStyle(color: Colors.white70),
         prefixIconColor: Colors.white,
         suffixIconColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 12,
-        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(28),
           borderSide: BorderSide.none,

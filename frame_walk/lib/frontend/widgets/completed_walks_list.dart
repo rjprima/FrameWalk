@@ -23,9 +23,9 @@ class CompletedWalksList extends StatelessWidget {
         /// along that route
         final groupedWalks = <String, List<WalkedRoute>>{};
 
-        /// looping through the walked routes from profile provider. adds the route to the 
-        /// groupedWalks Map if it isn't already there and adds the individual walk to 
-        /// the WalkedRoute list associated with the Map route entry 
+        /// looping through the walked routes from profile provider. adds the route to the
+        /// groupedWalks Map if it isn't already there and adds the individual walk to
+        /// the WalkedRoute list associated with the Map route entry
         for (final walk in profile.walkedRoutes) {
           groupedWalks.putIfAbsent(walk.routeId, () => []).add(walk);
         }
@@ -41,7 +41,8 @@ class CompletedWalksList extends StatelessWidget {
 
         // Sort routes by their most recent completion date.
         final routes = groupedWalks.entries.toList()
-          ..sort((a, b) { // .. is the cascade operator, allows performing a sequence of operations
+          ..sort((a, b) {
+            // .. is the cascade operator, allows performing a sequence of operations
             final aDate = a.value.first.completedAt ?? DateTime(0);
             final bDate = b.value.first.completedAt ?? DateTime(0);
             return bDate.compareTo(aDate);
@@ -59,7 +60,8 @@ class CompletedWalksList extends StatelessWidget {
                   child: Center(child: Text('No previous walks yet.')),
                 )
               else
-                ...routes.map((entry) { // ... is the spread operator, it allows the elements from routes.map to be inserted directly into the ListView's children list
+                ...routes.map((entry) {
+                  // ... is the spread operator, it allows the elements from routes.map to be inserted directly into the ListView's children list
                   final walks = entry.value; // the list of walks
                   final latestWalk = walks.first; // the latest walk, since each walks list was sorted earlier we can just take the first element
 
@@ -120,8 +122,8 @@ Center checkValidProfileState(ProfileProvider profile) {
       ),
     );
   }
-  
-  // default 
+
+  // default
   return Center(
     child: Text('Something went wrong, please reload to try again'),
   );

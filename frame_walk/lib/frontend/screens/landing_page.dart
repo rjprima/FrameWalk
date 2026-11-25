@@ -54,7 +54,7 @@ class LandingPage extends StatelessWidget {
                         child: const Text(
                           'Create Account',
                           style: TextStyle(fontSize: 20),
-                          ),
+                        ),
                       ),
                     ],
                   ),

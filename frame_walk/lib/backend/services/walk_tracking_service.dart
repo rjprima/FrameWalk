@@ -125,9 +125,9 @@ class WalkTrackingService extends ChangeNotifier {
     required WalkRepository repository,
     this.config = const TrackingConfig(),
     DateTime Function()? clock,
-  })  : _source = locationSource,
-        _walkRepository = repository,
-        _now = clock ?? DateTime.now;
+  }) : _source = locationSource,
+       _walkRepository = repository,
+       _now = clock ?? DateTime.now;
 
   WalkPhase _phase = WalkPhase.idle;
   SignalStatus _signal = SignalStatus.acquiring;
@@ -352,10 +352,9 @@ class WalkTrackingService extends ChangeNotifier {
     _walk = completed;
     try {
       // Issued together: Firestore applies them in this order, even offline.
-      await _persist(Future.wait([
-        _flush(),
-        _walkRepository.completeWalk(completed),
-      ]));
+      await _persist(
+        Future.wait([_flush(), _walkRepository.completeWalk(completed)]),
+      );
     } catch (error) {
       _errorMessage = "Couldn't save your walk. Check your connection.";
       _setPhase(WalkPhase.failed);
@@ -436,8 +435,10 @@ class WalkTrackingService extends ChangeNotifier {
   Future<LocationReadiness> resumeTracking({
     bool requestPermission = false,
   }) async {
-    final readiness =
-        await checkLocationReadiness(_source, request: requestPermission);
+    final readiness = await checkLocationReadiness(
+      _source,
+      request: requestPermission,
+    );
     if (_phase != WalkPhase.active || _inBackground || _disposed) {
       return readiness;
     }
@@ -476,7 +477,8 @@ class WalkTrackingService extends ChangeNotifier {
         now.difference(_lastFlushAt) >= config.flushInterval) {
       _flush();
     }
-    final waitingForFix = _signal == SignalStatus.acquiring ||
+    final waitingForFix =
+        _signal == SignalStatus.acquiring ||
         _signal == SignalStatus.good ||
         _signal == SignalStatus.lowAccuracy;
     final expectingFixes = !_inBackground || tracksInBackground;
@@ -491,7 +493,9 @@ class WalkTrackingService extends ChangeNotifier {
 
   void _listen() {
     _positionSub?.cancel();
-    _positionSub = _source.positionStream(config.settings).listen(
+    _positionSub = _source
+        .positionStream(config.settings)
+        .listen(
           _onSample,
           onError: _onStreamError,
           onDone: () => _positionSub = null,
@@ -520,7 +524,7 @@ class WalkTrackingService extends ChangeNotifier {
       );
       final seconds =
           sample.recordedAt.difference(previous.recordedAt).inMilliseconds /
-              1000;
+          1000;
       final plausible = seconds > 0
           ? step / seconds <= config.maxPlausibleSpeedMetersPerSecond
           : step <= config.maxAcceptedAccuracyMeters;
@@ -596,21 +600,20 @@ class WalkTrackingService extends ChangeNotifier {
     final batch = List<LocationPoint>.of(_pending);
     _pending.clear();
     _lastFlushAt = _now();
-    return _walkRepository.appendLocationPoints(walk, batch).catchError(
-      (Object error) {
-        if (_phase == WalkPhase.active) _pending.insertAll(0, batch);
-        _errorMessage = "Some of your route couldn't be saved yet.";
-        _notify();
-      },
-    );
+    return _walkRepository.appendLocationPoints(walk, batch).catchError((
+      Object error,
+    ) {
+      if (_phase == WalkPhase.active) _pending.insertAll(0, batch);
+      _errorMessage = "Some of your route couldn't be saved yet.";
+      _notify();
+    });
   }
 
   // Firestore only completes a write once the server confirms it. Offline,
   // the write is already safe in the local cache, so stop waiting after a
   // while instead of freezing the UI.
-  Future<void> _persist(Future<Object?> write) => write
-      .then<void>((_) {})
-      .timeout(config.persistTimeout, onTimeout: () {});
+  Future<void> _persist(Future<Object?> write) =>
+      write.then<void>((_) {}).timeout(config.persistTimeout, onTimeout: () {});
 
   void _cancelPositionStream() {
     _positionSub?.cancel();

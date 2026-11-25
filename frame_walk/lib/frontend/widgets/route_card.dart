@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+
 import '../../backend/services/route_manager.dart';
 
 // Shared by route cards and the bookmark button on the route details page.
@@ -51,9 +51,7 @@ class RouteCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       route.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   IconButton(

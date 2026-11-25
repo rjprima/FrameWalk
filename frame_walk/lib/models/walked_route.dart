@@ -97,9 +97,9 @@ class WalkedRoute {
   List<String> get stopIds => stops.map((stop) => stop.stopId).toList();
 
   List<String> get reachedStopIds => [
-        for (final stop in stops)
-          if (stop.reachedAt != null) stop.stopId,
-      ];
+    for (final stop in stops)
+      if (stop.reachedAt != null) stop.stopId,
+  ];
 
   List<String> get promptIds => stops.map((stop) => stop.promptId).toList();
 
@@ -143,22 +143,22 @@ class WalkedRoute {
   // routeTitle, startedAt, completedAt, stopIds, promptIds, stops[].stopId,
   // stopName, latitude, longitude, prompts) so it can read these documents.
   Map<String, dynamic> toMap() => {
-        'userId': userId,
-        'routeId': routeId,
-        'routeTitle': routeTitle,
-        'status': status.name,
-        'trackingMode': trackingMode,
-        'startedAt': Timestamp.fromDate(startedAt),
-        if (completedAt != null) 'completedAt': Timestamp.fromDate(completedAt!),
-        'stopIds': stopIds,
-        'promptIds': promptIds,
-        'reachedStopIds': reachedStopIds,
-        'stops': stops.map((stop) => stop.toMap()).toList(),
-        'distanceMeters': distanceMeters,
-        'locationPointCount': locationPointCount,
-        if (lastLocationAt != null)
-          'lastLocationAt': Timestamp.fromDate(lastLocationAt!),
-      };
+    'userId': userId,
+    'routeId': routeId,
+    'routeTitle': routeTitle,
+    'status': status.name,
+    'trackingMode': trackingMode,
+    'startedAt': Timestamp.fromDate(startedAt),
+    if (completedAt != null) 'completedAt': Timestamp.fromDate(completedAt!),
+    'stopIds': stopIds,
+    'promptIds': promptIds,
+    'reachedStopIds': reachedStopIds,
+    'stops': stops.map((stop) => stop.toMap()).toList(),
+    'distanceMeters': distanceMeters,
+    'locationPointCount': locationPointCount,
+    if (lastLocationAt != null)
+      'lastLocationAt': Timestamp.fromDate(lastLocationAt!),
+  };
 
   factory WalkedRoute.fromMap(String id, Map<String, dynamic> map) {
     return WalkedRoute(
@@ -171,8 +171,10 @@ class WalkedRoute {
       startedAt: readTimestamp(map['startedAt'])!,
       completedAt: readTimestamp(map['completedAt']),
       stops: ((map['stops'] as List?) ?? const [])
-          .map((stop) =>
-              WalkedStop.fromMap(Map<String, dynamic>.from(stop as Map)))
+          .map(
+            (stop) =>
+                WalkedStop.fromMap(Map<String, dynamic>.from(stop as Map)),
+          )
           .toList(),
       distanceMeters: (map['distanceMeters'] as num?)?.toDouble() ?? 0,
       locationPointCount: (map['locationPointCount'] as num?)?.toInt() ?? 0,
@@ -200,12 +202,12 @@ class WalkedStop {
   });
 
   factory WalkedStop.fromRouteStop(RouteStop stop) => WalkedStop(
-        stopId: stop.id,
-        stopName: stop.name,
-        latitude: stop.latitude,
-        longitude: stop.longitude,
-        prompt: stop.prompt,
-      );
+    stopId: stop.id,
+    stopName: stop.name,
+    latitude: stop.latitude,
+    longitude: stop.longitude,
+    prompt: stop.prompt,
+  );
 
   // Prompts don't have their own IDs yet, so a prompt is identified by its
   // stop and position. Same convention as the photo-gallery branch.
@@ -214,24 +216,24 @@ class WalkedStop {
   GeoCoordinate get coordinate => GeoCoordinate(latitude, longitude);
 
   WalkedStop copyWithReachedAt(DateTime time) => WalkedStop(
-        stopId: stopId,
-        stopName: stopName,
-        latitude: latitude,
-        longitude: longitude,
-        prompt: prompt,
-        reachedAt: time,
-      );
+    stopId: stopId,
+    stopName: stopName,
+    latitude: latitude,
+    longitude: longitude,
+    prompt: prompt,
+    reachedAt: time,
+  );
 
   Map<String, dynamic> toMap() => {
-        'stopId': stopId,
-        'stopName': stopName,
-        'latitude': latitude,
-        'longitude': longitude,
-        'prompts': [
-          {'id': promptId, 'text': prompt},
-        ],
-        'reachedAt': reachedAt == null ? null : Timestamp.fromDate(reachedAt!),
-      };
+    'stopId': stopId,
+    'stopName': stopName,
+    'latitude': latitude,
+    'longitude': longitude,
+    'prompts': [
+      {'id': promptId, 'text': prompt},
+    ],
+    'reachedAt': reachedAt == null ? null : Timestamp.fromDate(reachedAt!),
+  };
 
   factory WalkedStop.fromMap(Map<String, dynamic> map) {
     final prompts = (map['prompts'] as List?) ?? const [];
@@ -243,8 +245,8 @@ class WalkedStop {
       prompt: prompts.isEmpty
           ? ''
           : (Map<String, dynamic>.from(prompts.first as Map)['text']
-                  as String? ??
-              ''),
+                    as String? ??
+                ''),
       reachedAt: readTimestamp(map['reachedAt']),
     );
   }

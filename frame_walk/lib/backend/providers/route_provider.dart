@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../models/mock_route_data.dart';
@@ -24,7 +25,9 @@ class RouteProvider extends ChangeNotifier {
       }
     }
     if (bookmarkStore != null && userIds != null) {
-      _authSubscription = userIds.listen((id) { unawaited(loadBookmarksForUser(id)); });
+      _authSubscription = userIds.listen((id) {
+        unawaited(loadBookmarksForUser(id));
+      });
     }
   }
 
@@ -147,7 +150,9 @@ class RouteProvider extends ChangeNotifier {
     if (_manager.updateRoute(route)) _notify();
   }
 
-  void _notify() { if (!_disposed) notifyListeners(); }
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
 
   @override
   void dispose() {

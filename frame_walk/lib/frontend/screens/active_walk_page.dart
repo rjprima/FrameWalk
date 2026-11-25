@@ -17,11 +17,11 @@ import '../../models/location_point.dart';
 import '../../models/mock_route_data.dart';
 import '../../models/route_stop.dart';
 import '../../models/walked_route.dart';
+import '../theme/app_theme.dart';
 
-// iOS apps can't open the device-wide Location Services switch directly; the
-// settings button opens FrameWalk's own Settings page instead, so iOS users
-// are told where the switch is.
+// iOS apps can't open the device-wide Location Services switch directly.
 bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+
 const _iosLocationServicesPath =
     'Settings > Privacy & Security > Location Services';
 
@@ -47,8 +47,8 @@ class ActiveWalkPage extends StatefulWidget {
     this.stopNotifications,
     this.userId,
     this.showMap = true,
-  })  : resumeWalkId = null,
-        focusStopId = null;
+  }) : resumeWalkId = null,
+       focusStopId = null;
 
   // Reopens walk [resumeWalkId], loading it from Firestore, and carries on
   // tracking it. Used when a stop notification is tapped. [focusStopId] is
@@ -61,29 +61,26 @@ class ActiveWalkPage extends StatefulWidget {
     this.stopNotifications,
     this.userId,
     this.showMap = true,
-  })  : route = null,
-        stops = const [],
-        routePoints = const [];
+  }) : route = null,
+       stops = const [],
+       routePoints = const [];
 
   // The open walk screen, or null if there isn't one.
   static OpenWalkScreen? get openScreen => _ActiveWalkPageState._open;
 
+  // Null for a resumed walk; its details come from the saved walk instead.
   final WalkingRoute? route;
   final List<RouteStop> stops;
   final List<LatLng> routePoints;
   final String? resumeWalkId;
   final String? focusStopId;
 
-  // Injected by tests. Defaults to GPS and Firestore.
   final WalkTrackingService? trackingService;
 
   // Injected by tests. Defaults to local notifications.
   final StopNotificationService? stopNotifications;
 
-  // Defaults to the signed-in user.
   final String? userId;
-
-  // Google Maps can't render in widget tests.
   final bool showMap;
 
   @override
@@ -100,9 +97,13 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   late final StopNotificationService _notifications;
   late final StopArrivalNotifier _arrivalNotifier;
   bool _askedForNotifications = false;
+
   StreamSubscription<StopEvent>? _stopEventsSub;
   Timer? _clock;
   late List<LatLng> _routePoints = widget.routePoints;
+
+  // The stop from a tapped notification. Shown in the Current prompt box
+  // until the next stop is reached.
   late String? _focusedStopId = widget.focusStopId;
 
   @override
@@ -116,27 +117,35 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   @override
   void initState() {
     super.initState();
+
     _ownsService = widget.trackingService == null;
-    _service = widget.trackingService ??
+
+    _service =
+        widget.trackingService ??
         WalkTrackingService(
           locationSource: const GeolocatorLocationSource(),
           repository: WalkRepository(),
         );
+
     _service.addListener(_onServiceChanged);
     _stopEventsSub = _service.stopEvents.listen(_onStopEvent);
-    _notifications =
-        widget.stopNotifications ?? LocalStopNotificationService();
+
+    _notifications = widget.stopNotifications ?? LocalStopNotificationService();
+
     // Notifies about stops reached while the phone is locked or FrameWalk
     // is in the background; on screen, _onStopEvent shows a SnackBar.
     _arrivalNotifier = StopArrivalNotifier(
       walk: _service,
       notifications: _notifications,
     );
+
     WidgetsBinding.instance.addObserver(this);
-    // Refreshes the elapsed time. Coarse on purpose to avoid needless redraws.
+
+    // Refreshes elapsed time without unnecessary redraws.
     _clock = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted) setState(() {});
     });
+
     _open = this;
     _start();
   }
@@ -149,8 +158,9 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     _stopEventsSub?.cancel();
     _arrivalNotifier.dispose();
     _service.removeListener(_onServiceChanged);
-    // Disposing stops the location stream, whatever state the walk is in.
+
     if (_ownsService) _service.dispose();
+
     super.dispose();
   }
 
@@ -166,6 +176,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   Future<void> _start() async {
     final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
+
     final resumeWalkId = widget.resumeWalkId;
     if (resumeWalkId != null) {
       // Notification permission was settled when the walk first started.
@@ -176,6 +187,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
       );
       return;
     }
+
     // Asked before tracking starts so Android's "recording your walk"
     // notification is visible from the beginning. Only once per walk: on
     // Android, asking again after a "no" would prompt again. A "no" doesn't
@@ -185,6 +197,7 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
       await _notifications.requestPermission();
       if (!mounted) return;
     }
+
     await _service.startWalk(
       userId: userId,
       routeId: widget.route!.id,
@@ -205,21 +218,39 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     return points.map((p) => GeoCoordinate(p.latitude, p.longitude)).toList();
   }
 
+  // Displays a notification when the user approaches or reaches a stop.
   void _onStopEvent(StopEvent event) {
     if (!mounted) return;
+
+    // A newly reached stop replaces a tapped notification's stop in the
+    // Current prompt box.
+    if (event.type == StopEventType.reached && _focusedStopId != null) {
+      setState(() => _focusedStopId = null);
+    }
+
     final message = event.type == StopEventType.reached
-        ? 'You reached ${event.stop.stopName}! ${event.stop.prompt}'
+        ? 'You reached ${event.stop.stopName}!\n${event.stop.prompt}'
         : 'Approaching ${event.stop.stopName}';
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message, style: const TextStyle(fontSize: 16)),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
   }
 
   Future<void> _finish() async {
     await _service.completeWalk();
-    // The walk and routesCompleted are saved now, so the Account page can
-    // show them. Nullable so pages built without a ProfileProvider (tests)
-    // still work.
+
     if (mounted && _service.phase == WalkPhase.completed) {
       context.read<ProfileProvider?>()?.refresh();
     }
@@ -245,50 +276,65 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
         ],
       ),
     );
+
     if (cancel != true || !mounted) return;
+
     await _service.cancelWalk();
+
     if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final phase = _service.phase;
+
     return PopScope(
-      // Leaving mid-walk must go through cancel, so tracking always stops
-      // deliberately.
-      canPop: phase != WalkPhase.active && phase != WalkPhase.finishing,
+      canPop: phase != WalkPhase.active && phase != WalkPhase.finishing, // can go back to the previous screen if the walk isn't active or finishing
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && phase == WalkPhase.active) _confirmCancel();
+        if (!didPop && phase == WalkPhase.active) {
+          _confirmCancel();
+        }
       },
       child: Scaffold(
         appBar: AppBar(
+          // displays the name of the route
           title: Text(
             widget.route?.name ?? _service.walk?.routeTitle ?? 'Your walk',
           ),
+          centerTitle: true,
+          scrolledUnderElevation: 0,
         ),
         body: SafeArea(child: _buildBody(context)),
       ),
     );
   }
 
+  // builds the main body of the active walk page
   Widget _buildBody(BuildContext context) {
     final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
+
     if (userId == null) {
       return const _Message(text: 'Please log in to record a walk.');
     }
+
     switch (_service.phase) {
       case WalkPhase.idle:
       case WalkPhase.starting:
         return const Center(child: CircularProgressIndicator());
+
       case WalkPhase.blocked:
         return _buildBlocked(context);
+
       case WalkPhase.active:
       case WalkPhase.finishing:
         return _buildActive(context);
+
       case WalkPhase.completed:
         return _buildCompleted(context);
+
       case WalkPhase.cancelled:
         return const _Message(text: 'Walk cancelled.');
+
       case WalkPhase.failed:
         return _Message(
           text: _service.errorMessage ?? 'Something went wrong.',
@@ -303,43 +349,56 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   Widget _buildBlocked(BuildContext context) {
     final String text;
     Widget? action;
+
     switch (_service.readiness) {
       case LocationReadiness.serviceDisabled:
         text = _isIOS
             ? 'Location Services are turned off. Turn them on in '
-                '$_iosLocationServicesPath to track your walk.'
+                  '$_iosLocationServicesPath to track your walk.'
             : 'Location services are turned off. Turn them on to track '
-                'your walk.';
+                  'your walk.';
+
         action = ElevatedButton(
           onPressed: _service.openLocationSettings,
           child: Text(_isIOS ? 'Open Settings' : 'Open location settings'),
         );
+
       case LocationReadiness.denied:
-        text = 'FrameWalk needs your location to follow you along the route '
+        text =
+            'FrameWalk needs your location to follow you along the route '
             'and tell you when you reach each stop.';
+
         action = ElevatedButton(
           onPressed: _start,
           child: const Text('Allow location'),
         );
+
       case LocationReadiness.deniedForever:
-        text = 'Location access is turned off for FrameWalk. You can allow '
+        text =
+            'Location access is turned off for FrameWalk. You can allow '
             'it in Settings.';
+
         action = ElevatedButton(
           onPressed: _service.openAppSettings,
           child: const Text('Open settings'),
         );
+
       case LocationReadiness.approximateOnly:
-        text = 'FrameWalk needs your precise location to tell when you reach '
+        text =
+            'FrameWalk needs your precise location to tell when you reach '
             'a stop. Turn on "Precise location" for FrameWalk in Settings.';
+
         action = ElevatedButton(
           onPressed: _service.openAppSettings,
           child: const Text('Open settings'),
         );
+
       case LocationReadiness.unavailable:
       case LocationReadiness.ready:
       case null:
         text = "Location isn't available on this device right now.";
     }
+
     return _Message(
       text: text,
       action: Column(
@@ -352,114 +411,354 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
     );
   }
 
+  // Main active walk layout.
   Widget _buildActive(BuildContext context) {
     final progress = _service.progress!;
-    final walk = _service.walk!;
     final next = progress.nextStop;
     final toNext = progress.distanceToNextStopMeters;
-    final elapsed = DateTime.now().difference(walk.startedAt);
     final finishing = _service.phase == WalkPhase.finishing;
-
-    WalkedStop? focused;
-    for (final stop in progress.stops) {
-      if (stop.stopId == _focusedStopId) focused = stop;
-    }
 
     return Column(
       children: [
         _SignalBanner(service: _service),
-        if (focused != null)
-          _FocusedStopCard(
-            stop: focused,
-            onClose: () => setState(() => _focusedStopId = null),
-          ),
-        if (widget.showMap) Expanded(child: _buildMap(context)),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${progress.reachedCount} of ${progress.totalStops} stops '
-                'reached',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(value: progress.fractionComplete),
-              const SizedBox(height: 12),
-              Text(
-                next == null
-                    ? 'All stops reached!'
-                    : 'Next: ${next.stopName}'
-                        '${toNext == null ? '' : ' · ${_meters(toNext)} away'}',
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${_meters(walk.distanceMeters)} walked · '
-                '${elapsed.inMinutes} min',
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: finishing ? null : _finish,
-                child: Text(finishing ? 'Saving...' : 'Finish walk'),
-              ),
-              TextButton(
-                onPressed: finishing ? null : _confirmCancel,
-                child: const Text('Cancel walk'),
-              ),
-            ],
+
+        // Map takes the upper portion of the page.
+        if (widget.showMap) Expanded(flex: 5, child: _buildMap(context)),
+
+        // Progress and current prompt.
+        Expanded(
+          flex: 4,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 5),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${progress.reachedCount} of ${progress.totalStops} stops reached',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: finishing ? null : _confirmCancel,
+                      icon: const Icon(Icons.close, size: 18),
+                      label: const Text('Cancel walk'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                LinearProgressIndicator(
+                  value: progress.fractionComplete,
+                  minHeight: 3,
+                ),
+
+                const SizedBox(height: 12),
+
+                Text(
+                  next == null
+                      ? 'All stops reached!'
+                      : 'Next: ${next.stopName}'
+                            '${toNext == null ? '' : ' · ${_meters(toNext)} away'}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+
+                const SizedBox(height: 20),
+
+                _buildCurrentPrompt(context, _currentPromptStop(progress)),
+
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: finishing ? null : _finish,
+                    child: Text(finishing ? 'Saving...' : 'Finish walk'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
+  // The stop whose prompt the Current prompt box shows: the one a tapped
+  // notification was about, otherwise the most recently reached stop.
+  // Read from the walk's progress so it also works for a resumed walk.
+  WalkedStop? _currentPromptStop(RouteProgressTracker progress) {
+    WalkedStop? focused;
+    WalkedStop? latest;
+    for (final stop in progress.stops) {
+      if (stop.stopId == _focusedStopId) focused = stop;
+      final reachedAt = stop.reachedAt;
+      if (reachedAt != null &&
+          (latest == null || reachedAt.isAfter(latest.reachedAt!))) {
+        latest = stop;
+      }
+    }
+    return focused ?? latest;
+  }
+
+  // Shows the prompt for [currentStop].
+  // Before the first stop is reached, displays a placeholder.
+  Widget _buildCurrentPrompt(BuildContext context, WalkedStop? currentStop) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Current prompt:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            currentStop != null
+                ? '${currentStop.stopName}: ${currentStop.prompt}'
+                : 'Reach your first stop to see its photo prompt.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: currentStop == null
+                  ? theme.colorScheme.onSurfaceVariant
+                  : theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Displays the map with the Browse Stops button overlaid.
   Widget _buildMap(BuildContext context) {
     final color = Theme.of(context).colorScheme.primary;
     final progress = _service.progress!;
+
     final walked = _service.recordedPoints
         .map((p) => LatLng(p.latitude, p.longitude))
         .toList();
-    return GoogleMap(
-      initialCameraPosition: CameraPosition(
-        target: _routePoints.isNotEmpty
-            ? _routePoints.first
-            : const LatLng(47.6553, -122.3035),
-        zoom: 16,
-      ),
-      // Safe: the walk only starts once location permission is granted.
-      myLocationEnabled: true,
-      myLocationButtonEnabled: true,
-      zoomControlsEnabled: false,
-      mapToolbarEnabled: false,
-      markers: {
-        for (final stop in progress.stops)
-          Marker(
-            markerId: MarkerId(stop.stopId),
-            position: LatLng(stop.latitude, stop.longitude),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              progress.proximityOf(stop.stopId) == StopProximity.reached
-                  ? BitmapDescriptor.hueGreen
-                  : BitmapDescriptor.hueRed,
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _routePoints.isNotEmpty
+                  ? _routePoints.first
+                  : const LatLng(47.6553, -122.3035),
+              zoom: 16,
             ),
-            infoWindow: InfoWindow(title: stop.stopName, snippet: stop.prompt),
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            zoomControlsEnabled: false,
+            mapToolbarEnabled: false,
+            markers: {
+              for (final stop in progress.stops)
+                Marker(
+                  markerId: MarkerId(stop.stopId),
+                  position: LatLng(stop.latitude, stop.longitude),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                    progress.proximityOf(stop.stopId) == StopProximity.reached
+                        ? BitmapDescriptor.hueGreen
+                        : BitmapDescriptor.hueRed,
+                  ),
+                  infoWindow: InfoWindow(
+                    title: stop.stopName,
+                    snippet: stop.prompt,
+                  ),
+                ),
+            },
+            polylines: {
+              if (_routePoints.isNotEmpty)
+                Polyline(
+                  polylineId: const PolylineId('route'),
+                  points: _routePoints,
+                  color: color.withValues(alpha: 0.4),
+                  width: 5,
+                ),
+              if (walked.length > 1)
+                Polyline(
+                  polylineId: const PolylineId('walked'),
+                  points: walked,
+                  color: color,
+                  width: 4,
+                ),
+            },
           ),
-      },
-      polylines: {
-        if (_routePoints.isNotEmpty)
-          Polyline(
-            polylineId: const PolylineId('route'),
-            points: _routePoints,
-            color: color.withValues(alpha: 0.4),
-            width: 5,
+        ),
+
+        // Browse stops button.
+        // Browse stops button, matching the Map page.
+        Positioned(
+          top: 8,
+          left: 12,
+          child: Material(
+            color: AppTheme.cream,
+            borderRadius: BorderRadius.circular(8),
+            child: TextButton.icon(
+              onPressed: _showStopsSheet,
+              icon: const Icon(Icons.list, size: 18),
+              label: Text('Browse stops (${progress.totalStops})'),
+            ),
           ),
-        if (walked.length > 1)
-          Polyline(
-            polylineId: const PolylineId('walked'),
-            points: walked,
-            color: color,
-            width: 4,
+        ),
+      ],
+    );
+  }
+
+  // Opens the route stops in a rounded bottom sheet.
+  Future<void> _showStopsSheet() {
+    final theme = Theme.of(context);
+
+    // From the walk rather than widget.stops, which a resumed walk doesn't
+    // have.
+    final stops = _service.progress!.stops;
+
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          bottom: false,
+          child: Container(
+            height: MediaQuery.of(sheetContext).size.height * 0.62,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+
+                // Sheet handle.
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Route Stops',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    itemCount: stops.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final stop = stops[index];
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 19,
+                            backgroundColor: theme.colorScheme.primary,
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color: theme.colorScheme.onPrimary,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Card(
+                              elevation: 2,
+                              margin: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ExpansionTile(
+                                title: Text(
+                                  stop.stopName,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                                childrenPadding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          const TextSpan(
+                                            text: 'PROMPT: ',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          TextSpan(text: stop.prompt),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
+        );
       },
     );
   }
@@ -467,8 +766,10 @@ class _ActiveWalkPageState extends State<ActiveWalkPage>
   Widget _buildCompleted(BuildContext context) {
     final walk = _service.walk!;
     final reached = walk.reachedStopIds.length;
+
     return _Message(
-      text: 'Walk complete!\n\n'
+      text:
+          'Walk complete!\n\n'
           '$reached of ${walk.stops.length} stops reached\n'
           '${_meters(walk.distanceMeters)} walked in '
           '${walk.duration?.inMinutes ?? 0} min',
@@ -494,31 +795,40 @@ class _SignalBanner extends StatelessWidget {
     final String? text;
     VoidCallback? onFix;
     String fixLabel = 'Try again';
+
     switch (service.signal) {
       case SignalStatus.good:
         text = null;
+
       case SignalStatus.acquiring:
         text = 'Finding your location...';
+
       case SignalStatus.lowAccuracy:
         text = 'GPS signal is weak. Try moving away from tall buildings.';
+
       case SignalStatus.noRecentFix:
         text = 'No recent GPS update. Your location will update as you walk.';
         onFix = () => service.resumeTracking();
+
       case SignalStatus.gpsDisabled:
         text = _isIOS
             ? 'Location Services are off. Turn them on in '
-                '$_iosLocationServicesPath to keep tracking.'
+                  '$_iosLocationServicesPath to keep tracking.'
             : 'Location services are off. Turn them on to keep tracking.';
         onFix = service.openLocationSettings;
         fixLabel = 'Settings';
+
       case SignalStatus.permissionRevoked:
         text = 'Location permission was turned off.';
         onFix = () => service.resumeTracking(requestPermission: true);
         fixLabel = 'Allow';
+
       case SignalStatus.pausedInBackground:
         text = 'Tracking is paused while FrameWalk is in the background.';
     }
+
     if (text == null) return const SizedBox.shrink();
+
     return MaterialBanner(
       content: Text(text),
       actions: [
@@ -527,38 +837,6 @@ class _SignalBanner extends StatelessWidget {
         else
           const SizedBox.shrink(),
       ],
-    );
-  }
-}
-
-// The stop a tapped notification was about, with its photography prompt.
-class _FocusedStopCard extends StatelessWidget {
-  const _FocusedStopCard({required this.stop, required this.onClose});
-
-  final WalkedStop stop;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final reached = stop.reachedAt != null;
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: ListTile(
-        leading: Icon(
-          reached ? Icons.photo_camera : Icons.place_outlined,
-          color: theme.colorScheme.primary,
-        ),
-        title: Text(reached ? 'You reached ${stop.stopName}' : stop.stopName),
-        subtitle: Text(
-          stop.prompt.isEmpty ? 'Take a photo here.' : stop.prompt,
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: 'Dismiss',
-          onPressed: onClose,
-        ),
-      ),
     );
   }
 }
